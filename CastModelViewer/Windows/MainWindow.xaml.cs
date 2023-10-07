@@ -26,6 +26,7 @@ using System.Windows.Input;
 using System.Runtime.InteropServices;
 using System.Windows.Interop;
 using HelixToolkit.Wpf;
+using Cast;
 
 namespace CastModelViewer.Windows
 {
@@ -247,30 +248,66 @@ namespace CastModelViewer.Windows
             try
             {
                 var watch = Stopwatch.StartNew();
-                SEModelImporter reader = new SEModelImporter
-                {
-                    LoadTextures = LoadTextures.IsChecked == true,
-                    UpAxis = UseYUpAxis.IsChecked == true ? "Y" : "Z",
-                    Folder = Path.GetDirectoryName(modelFile.Path)
-                };
 
-                using (FileStream stream = new FileStream(modelFile.Path, FileMode.Open))
+                //Cast
+                if (Path.GetExtension(modelFile.Path) == ".cast")
                 {
-                    Model3DGroup loadedModel = reader.Read(stream);
-                    modelFile.Materials = reader.SEModelMaterials;
-                    modelFile.ModelBones = reader.ModelBones;
-                    modelFile.BoneCount = (int)reader.BoneCount;
-                    model.Content = loadedModel;
-                    MainViewport.ZoomExtents(0);
+                    CastModelImporter reader = new CastModelImporter
+                    {
+                        LoadTextures = LoadTextures.IsChecked == true,
+                        UpAxis = UseYUpAxis.IsChecked == true ? "Y" : "Z",
+                        Folder = Path.GetDirectoryName(modelFile.Path)
+                    };
+
+                    using (FileStream stream = new FileStream(modelFile.Path, FileMode.Open))
+                    {
+                        Model3DGroup maybemodel = reader.Read(stream);
+                        modelFile.ModelBones = reader.ModelBones;
+                        modelFile.BoneCount = (int)reader.BoneCount;
+                        model.Content = maybemodel;
+                        MainViewport.ZoomExtents(0);
+                    }
+
+                    watch.Stop();
+                    Status.Content = string.Format("Status     : Loaded {0} in {1} Seconds",
+                        modelFile.Name, watch.ElapsedMilliseconds / 1000.0);
+                    VertexCount.Content = string.Format("Vertices   : {0}", reader.VertexCount);
+                    FaceCount.Content = string.Format("Faces      : {0}", reader.FaceCount);
+                    MaterialCount.Content = string.Format("Materials  : {0}", reader.MaterialCount);
+                    BoneCount.Content = string.Format("Bones      : {0}", reader.BoneCount);
+                    Status.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FFABB6C3"));
+                    watch.Stop();
                 }
-                watch.Stop();
-                Status.Content        = string.Format("Status     : Loaded {0} in {1} Seconds", 
-                    modelFile.Name, watch.ElapsedMilliseconds / 1000.0);
-                VertexCount.Content   = string.Format("Vertices   : {0}", reader.VertexCount);
-                FaceCount.Content     = string.Format("Faces      : {0}", reader.FaceCount);
-                MaterialCount.Content = string.Format("Materials  : {0}", reader.MaterialCount);
-                BoneCount.Content     = string.Format("Bones      : {0}", reader.BoneCount);
-                Status.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FFABB6C3"));
+
+                else if (Path.GetExtension(modelFile.Path) == ".semodel")
+                {
+                    //SEModel
+                    SEModelImporter reader = new SEModelImporter
+                    {
+                        LoadTextures = LoadTextures.IsChecked == true,
+                        UpAxis = UseYUpAxis.IsChecked == true ? "Y" : "Z",
+                        Folder = Path.GetDirectoryName(modelFile.Path)
+                    };
+
+                    using (FileStream stream = new FileStream(modelFile.Path, FileMode.Open))
+                    {
+                        Model3DGroup loadedModel = reader.Read(stream);
+                        modelFile.Materials = reader.SEModelMaterials;
+                        modelFile.ModelBones = reader.ModelBones;
+                        modelFile.BoneCount = (int)reader.BoneCount;
+                        model.Content = loadedModel;
+                        MainViewport.ZoomExtents(0);
+                    }
+
+                    watch.Stop();
+                    Status.Content = string.Format("Status     : Loaded {0} in {1} Seconds",
+                        modelFile.Name, watch.ElapsedMilliseconds / 1000.0);
+                    VertexCount.Content = string.Format("Vertices   : {0}", reader.VertexCount);
+                    FaceCount.Content = string.Format("Faces      : {0}", reader.FaceCount);
+                    MaterialCount.Content = string.Format("Materials  : {0}", reader.MaterialCount);
+                    BoneCount.Content = string.Format("Bones      : {0}", reader.BoneCount);
+                    Status.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FFABB6C3"));
+                }
             }
             catch (Exception e)
             {

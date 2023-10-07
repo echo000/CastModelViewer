@@ -271,6 +271,8 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Util\Cast.cs" />
+    <Compile Include="Util\CastModelImporter.cs" />
     <Compile Include="Util\ColumnSorter.cs" />
     <Compile Include="Util\Common.cs" />
     <Compile Include="Util\FolderUtil.cs" />
