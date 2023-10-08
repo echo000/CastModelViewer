@@ -33,6 +33,8 @@ namespace Cast
                     return new Mesh();
                 case 0x6C74616D:
                     return new Material();
+                case 0x656E6F62:
+                    return new Bone();
                 default:
                     return new CastNode(Identifier);
             }
@@ -230,6 +232,24 @@ namespace Cast
             : base(0x6C656B73)
         {
         }
+
+        public List<Bone> Bones()
+        {
+            var Result = ChildrenOfType<Bone>();
+            if (Result.Count > 0)
+            {
+                return Result;
+            }
+            return null;
+        }
+    }
+
+    public class Bone : CastNode
+    {
+        public Bone()
+            : base(0x656E6F62)
+        {
+        }
     }
 
     public class Mesh : CastNode
@@ -369,7 +389,9 @@ namespace Cast
                 Node.Properties.Add(Property.Name, Property);
             }
             Node.ChildNodes.Capacity = (int)Header.ChildCount;
-            if(Header.NodeHash != 0)
+
+            //Check if the Header has a hash, and set the node hash to it if it does
+            if (Header.NodeHash != 0)
                 Node.Hash = Header.NodeHash;
 
             for (var i = 0; i < Header.ChildCount; i++)
@@ -417,6 +439,7 @@ namespace Cast
             return Result;
         }
 
+        //Load cast model from stream
         public static CastFile Load(Stream s)
         {
             var Reader = new BinaryReader(s);

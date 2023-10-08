@@ -1,21 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Windows.Media.Media3D;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
+﻿using Cast;
 using HelixToolkit.Wpf;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Media.Media3D;
-using Cast;
-using HelixToolkit.Wpf;
-using System.Linq;
-using System.Security.Policy;
-using System.Windows.Markup;
 
 namespace CastModelViewer.Util
 {
@@ -98,7 +90,7 @@ namespace CastModelViewer.Util
             Model3DGroup modelGroup = new Model3DGroup();
             ModelBones = new List<ModelFile.ModelBone>();
             var model = cast.RootNodes[0].ChildrenOfType<Cast.Model>().FirstOrDefault();
-            var skeleton = model.ChildrenOfType<Cast.Skeleton>().FirstOrDefault();
+            var skeleton = model.Skeleton();
             BoneCount = (uint)skeleton.ChildNodes.Count;
             MaterialCount = model.ChildrenOfType<Cast.Material>().Count();
 
