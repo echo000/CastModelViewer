@@ -229,7 +229,7 @@ namespace CastModelViewer.Util
                         SpecularMap = material.SpecularNode()?.Path(),
                     }
                 });
-                var path = (string)material.DiffuseNode()?.Path();
+                var path = material.DiffuseNode()?.Path();
                 if (!string.IsNullOrEmpty(path))
                 {
                     string image = Path.Combine(Folder, path);
