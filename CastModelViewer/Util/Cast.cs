@@ -1,8 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Runtime.CompilerServices;
 using System.Text;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using System.Windows.Media.Media3D;
+using System.Linq;
 
 namespace Cast
 {
@@ -29,12 +31,14 @@ namespace Cast
                     return new Model();
                 case 0x6C656B73:
                     return new Skeleton();
-                case 0x6873656D:
-                    return new Mesh();
-                case 0x6C74616D:
-                    return new Material();
                 case 0x656E6F62:
                     return new Bone();
+                case 0x6873656D:
+                    return new Mesh();
+                case 0x6C74616D: 
+                    return new Material();
+                case 0x656C6966:
+                    return new FileNode();
                 default:
                     return new CastNode(Identifier);
             }
@@ -48,9 +52,9 @@ namespace Cast
                 case "b":
                     return Reader.ReadByte();
                 case "h":
-                    return Reader.ReadInt16();
+                    return Reader.ReadUInt16();
                 case "i":
-                    return Reader.ReadInt32();
+                    return Reader.ReadUInt32();
                 case "l":
                     return Reader.ReadUInt64();
                 case "f":
@@ -112,7 +116,7 @@ namespace Cast
 
         public static byte[] StringToBytes(string Value)
         {
-            return Encoding.UTF8.GetBytes(Value.Replace("\0", ""));
+            return Encoding.UTF8.GetBytes(Value);
         }
     }
 
@@ -205,12 +209,18 @@ namespace Cast
         }
     }
 
+    /// <summary>
+    /// A 2 component (XY) vector.
+    /// </summary>
     public class Vector2
     {
         public float X { get; set; }
         public float Y { get; set; }
     }
 
+    /// <summary>
+    /// A 3 component (XYZ) vector.
+    /// </summary>
     public class Vector3
     {
         public float X { get; set; }
@@ -218,12 +228,103 @@ namespace Cast
         public float Z { get; set; }
     }
 
+    /// <summary>
+    /// A 4 component (XYZW) vector.
+    /// </summary>
     public class Vector4
     {
         public float X { get; set; }
         public float Y { get; set; }
         public float Z { get; set; }
         public float W { get; set; }
+    }
+
+    public class Bone : CastNode
+    {
+        public Bone()
+            : base(0x656E6F62)
+        {
+        }
+
+        public string Name()
+        {
+            if (Properties.TryGetValue("n", out CastProperty Value))
+            {
+                return (string)Value.Values[0];
+            }
+
+            return null;
+        }
+
+        public int ParentIndex()
+        {
+            if (Properties.TryGetValue("p", out CastProperty Value))
+            {
+                return unchecked((int)(uint)Value.Values[0]);
+            }
+
+            return -1;
+        }
+
+        public bool SegmentScaleCompensate()
+        {
+            if (Properties.TryGetValue("ssc", out CastProperty Value))
+            {
+                return (int)Value.Values[0] == 1;
+            }
+
+            return false;
+        }
+
+        public Vector3 LocalPosition()
+        {
+            if (Properties.TryGetValue("lp", out CastProperty Value))
+            {
+                return (Vector3)Value.Values[0];
+            }
+
+            return null;
+        }
+
+        public Vector4 LocalRotation()
+        {
+            if (Properties.TryGetValue("lr", out CastProperty Value))
+            {
+                return (Vector4)Value.Values[0];
+            }
+
+            return null;
+        }
+
+        public Vector3 WorldPosition()
+        {
+            if (Properties.TryGetValue("wp", out CastProperty Value))
+            {
+                return (Vector3)Value.Values[0];
+            }
+
+            return null;
+        }
+
+        public Vector4 WorldRotation()
+        {
+            if (Properties.TryGetValue("wr", out CastProperty Value))
+            {
+                return (Vector4)Value.Values[0];
+            }
+
+            return null;
+        }
+
+        public Vector3 Scale()
+        {
+            if (Properties.TryGetValue("s", out CastProperty Value))
+            {
+                return (Vector3)Value.Values[0];
+            }
+
+            return null;
+        }
     }
 
     public class Skeleton : CastNode
@@ -235,20 +336,7 @@ namespace Cast
 
         public List<Bone> Bones()
         {
-            var Result = ChildrenOfType<Bone>();
-            if (Result.Count > 0)
-            {
-                return Result;
-            }
-            return null;
-        }
-    }
-
-    public class Bone : CastNode
-    {
-        public Bone()
-            : base(0x656E6F62)
-        {
+            return ChildrenOfType<Bone>();
         }
     }
 
@@ -258,6 +346,51 @@ namespace Cast
             : base(0x6873656D)
         {
         }
+
+        public List<Vector3> VertexPositions()
+        {
+            if (Properties.TryGetValue("vp", out CastProperty Value))
+            {
+                return Value.Values.OfType<Cast.Vector3>().ToList();
+            }
+            return null;
+        }
+
+        public List<Vector3> VertexNormals()
+        {
+            if (Properties.TryGetValue("vn", out CastProperty Value))
+            {
+                return Value.Values.OfType<Cast.Vector3>().ToList();
+            }
+            return null;
+        }
+        
+        public List<Vector2> VertexUVs()
+        {
+            if (Properties.TryGetValue("u0", out CastProperty Value))
+            {
+                return Value.Values.OfType<Cast.Vector2>().ToList();
+            }
+            return null;
+        }
+
+        public List<object> VertexFaces()
+        {
+            if (Properties.TryGetValue("f", out CastProperty Value))
+            {
+                return Value.Values;
+            }
+            return null;
+        }
+
+        public ulong MaterialHash()
+        {
+            if (Properties.TryGetValue("m", out CastProperty Value))
+            {
+                return (ulong)Value.Values[0];
+            }
+            return 0;
+        }
     }
 
     public class Material : CastNode
@@ -265,6 +398,69 @@ namespace Cast
         public Material()
             : base(0x6C74616D)
         {
+        }
+
+        public string Name()
+        {
+            if (Properties.TryGetValue("n", out CastProperty Value))
+            {
+                return (string)Value.Values[0];
+            }
+            return null;
+        }
+
+        public ulong DiffuseHash()
+        {
+            if (Properties.TryGetValue("albedo", out CastProperty Value))
+            {
+                return (ulong)Value.Values[0];
+            }
+            return 0;
+        }
+
+        public ulong SpecularHash()
+        {
+            if (Properties.TryGetValue("specular", out CastProperty Value))
+            {
+                return (ulong)Value.Values[0];
+            }
+            return 0;
+        }
+
+        public ulong NormalHash()
+        {
+            if (Properties.TryGetValue("normal", out CastProperty Value))
+            {
+                return (ulong)Value.Values[0];
+            }
+            return 0;
+        }
+
+        public FileNode DiffuseNode()
+        {
+            if(ChildByHash(DiffuseHash()) is FileNode Node)
+            {
+                return Node;
+            }
+            return null;
+        }
+
+        public FileNode NormalNode()
+        {
+            if (ChildByHash(NormalHash()) is FileNode Node)
+            {
+                return Node;
+            }
+            return null;
+        }
+
+        public FileNode SpecularNode()
+        {
+            if (ChildByHash(SpecularHash()) is FileNode Node)
+            {
+                return Node;
+            }
+            return null;
         }
     }
 
@@ -285,6 +481,28 @@ namespace Cast
             }
 
             return null;
+        }
+
+        public List<Mesh> Meshes()
+        {
+            return ChildrenOfType<Mesh>();
+        }
+    }
+
+    public class FileNode : CastNode
+    {
+        public FileNode()
+            : base(0x656C6966)
+        {
+        }
+
+        public string Path()
+        {
+            if (Properties.TryGetValue("p", out CastProperty Value))
+            {
+                return (string)Value.Values[0];
+            }
+            return "";
         }
     }
 
@@ -368,7 +586,6 @@ namespace Cast
                     return Child;
                 }
             }
-
             return null;
         }
 
@@ -388,9 +605,9 @@ namespace Cast
 
                 Node.Properties.Add(Property.Name, Property);
             }
+
             Node.ChildNodes.Capacity = (int)Header.ChildCount;
 
-            //Check if the Header has a hash, and set the node hash to it if it does
             if (Header.NodeHash != 0)
                 Node.Hash = Header.NodeHash;
 
@@ -417,54 +634,36 @@ namespace Cast
             RootNodes = new List<CastNode>();
         }
 
+        public static CastFile Load(Stream IOStream)
+        {
+            var Reader = new BinaryReader(IOStream);
+            var Header = CastHeader.Load(Reader);
+
+            if (Header.Magic != 0x74736163)
+            {
+                throw new Exception("Invalid cast file magic");
+            }
+
+            var Result = new CastFile();
+
+            Result.RootNodes.Capacity = (int)Header.RootNodeCount;
+
+            for (var i = 0; i < Header.RootNodeCount; i++)
+            {
+                Result.RootNodes.Add(CastNode.Load(Reader));
+            }
+
+            return Result;
+        }
+
         public static CastFile Load(string Path)
         {
-            var Reader = new BinaryReader(File.OpenRead(Path));
-            var Header = CastHeader.Load(Reader);
-
-            if (Header.Magic != 0x74736163)
-            {
-                throw new Exception("Invalid cast file magic");
-            }
-
-            var Result = new CastFile();
-
-            Result.RootNodes.Capacity = (int)Header.RootNodeCount;
-
-            for (var i = 0; i < Header.RootNodeCount; i++)
-            {
-                Result.RootNodes.Add(CastNode.Load(Reader));
-            }
-
-            return Result;
+            return Load(File.OpenRead(Path));
         }
 
-        //Load cast model from stream
-        public static CastFile Load(Stream s)
+        public void Save(Stream IOStream)
         {
-            var Reader = new BinaryReader(s);
-            var Header = CastHeader.Load(Reader);
-
-            if (Header.Magic != 0x74736163)
-            {
-                throw new Exception("Invalid cast file magic");
-            }
-
-            var Result = new CastFile();
-
-            Result.RootNodes.Capacity = (int)Header.RootNodeCount;
-
-            for (var i = 0; i < Header.RootNodeCount; i++)
-            {
-                Result.RootNodes.Add(CastNode.Load(Reader));
-            }
-
-            return Result;
-        }
-
-        public void Save(string Path)
-        {
-            var Writer = new BinaryWriter(File.Create(Path));
+            var Writer = new BinaryWriter(IOStream);
             var Header = new CastHeader
             {
                 RootNodeCount = (uint)RootNodes.Count
@@ -476,6 +675,11 @@ namespace Cast
             {
                 RootNode.Save(Writer);
             }
+        }
+
+        public void Save(string Path)
+        {
+            Save(File.Create(Path));
         }
     }
 }

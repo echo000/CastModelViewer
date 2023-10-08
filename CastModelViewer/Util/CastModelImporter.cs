@@ -72,6 +72,11 @@ namespace CastModelViewer.Util
         public List<ModelFile.ModelBone> ModelBones { get; set; }
 
         /// <summary>
+        /// SEModel Materials
+        /// </summary>
+        public readonly List<SELib.SEModelMaterial> SEModelMaterials = new List<SELib.SEModelMaterial>();
+
+        /// <summary>
         /// Helix Materials
         /// </summary>
         private readonly List<System.Windows.Media.Media3D.Material> Materials = new List<System.Windows.Media.Media3D.Material>();
@@ -80,6 +85,38 @@ namespace CastModelViewer.Util
         /// Cast stores materials as hashes, this is a list of hashes to match with the materials list
         /// </summary>
         private readonly List<ulong> MaterialHashes = new List<ulong>();
+
+        /// <summary>
+        /// Axis Values
+        /// </summary>
+        public Dictionary<string, Vector3[]> Axes = new Dictionary<string, Vector3[]>()
+        {
+            { "Z", new Vector3[]
+            {
+                new Vector3{ X = 1.000000f, Y = 0.000000f, Z = 0.000000f },
+                new Vector3{ X = 0.000000f, Y = 1.000000f, Z = 0.000000f },
+                new Vector3{ X = 0.000000f, Y = 0.000000f, Z = 1.000000f },
+            }
+            },
+            { "Y", new Vector3[]
+            {
+                new Vector3{ X = 1.000000f, Y = 0.000000f, Z = 0.000000f },
+                new Vector3{ X = 0.000000f, Y = 0.000000f, Z = 1.000000f },
+                new Vector3{ X = 0.000000f, Y = 1.000000f, Z = 0.000000f },
+            }
+            },
+        };
+
+        /// <summary>
+        /// Computes Dot Product of the 2 Vectors
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        /// <returns></returns>
+        public float DotProduct(Vector3 a, Vector3 b)
+        {
+            return (float)((a.X * b.X) + (a.Y * b.Y) + (a.Z * b.Z));
+        }
 
         /// <summary>
         /// Loads the Cast Model
@@ -106,43 +143,43 @@ namespace CastModelViewer.Util
                     TriangleIndices = new List<int>(),
                     TextureCoordinates = new List<Point>(),
                     Normals = new List<Vector3D>(),
-                    Material = Materials[MaterialHashes.IndexOf((ulong)cmesh.Properties["m"].Values[0])]
+                    Material = Materials[MaterialHashes.IndexOf(cmesh.MaterialHash())]
                 };
 
-                cmesh.Properties.TryGetValue("vp", out var positions);
-                for(int i = 0; i < positions.Values.Count; i++)
+                var VertexPositions = cmesh.VertexPositions();
+                for (int i = 0; i < VertexPositions.Count; i++)
                 {
                     VertexCount++;
                     mesh.Positions.Add(new Point3D(
-                        ((Vector3)positions.Values[i]).X,
-                        ((Vector3)positions.Values[i]).Y,
-                        ((Vector3)positions.Values[i]).Z));
+                        DotProduct(VertexPositions[i], Axes[UpAxis][0]),
+                        DotProduct(VertexPositions[i], Axes[UpAxis][1]),
+                        DotProduct(VertexPositions[i], Axes[UpAxis][2])));
                 }
 
-                cmesh.Properties.TryGetValue("vn", out var normals);
-                for (int i = 0; i < normals.Values.Count; i++)
+                var normals = cmesh.VertexNormals();
+                for (int i = 0; i < normals.Count; i++)
                 {
                     mesh.Normals.Add(new Vector3D(
-                            ((Vector3)normals.Values[i]).X,
-                            ((Vector3)normals.Values[i]).Y,
-                            ((Vector3)normals.Values[i]).Z));
+                            DotProduct(normals[i], Axes[UpAxis][0]),
+                            DotProduct(normals[i], Axes[UpAxis][1]),
+                            DotProduct(normals[i], Axes[UpAxis][2])));
                 }
-                cmesh.Properties.TryGetValue("u0", out var uvs);
-                for(int i = 0; i < uvs.Values.Count; i++)
+                var uvs = cmesh.VertexUVs();
+                for(int i = 0; i < uvs.Count; i++)
                 {
                     mesh.TextureCoordinates.Add(
                         new Point(
-                                ((Vector2)uvs.Values[i]).X,
-                                ((Vector2)uvs.Values[i]).Y));
+                                uvs[i].X,
+                                uvs[i].Y));
                 }
 
-                cmesh.Properties.TryGetValue("f", out var faces);
-                for (var i = 0; i < faces.Values.Count; i += 3)
+                var faces = cmesh.VertexFaces();
+                for (var i = 0; i < faces.Count; i += 3)
                 {
                     FaceCount++;
-                    mesh.TriangleIndices.Add(Convert.ToInt32(faces.Values[i]));
-                    mesh.TriangleIndices.Add(Convert.ToInt32(faces.Values[i + 1]));
-                    mesh.TriangleIndices.Add(Convert.ToInt32(faces.Values[i + 2]));
+                    mesh.TriangleIndices.Add(Convert.ToInt32(faces[i]));
+                    mesh.TriangleIndices.Add(Convert.ToInt32(faces[i + 1]));
+                    mesh.TriangleIndices.Add(Convert.ToInt32(faces[i + 2]));
                 }
                 modelGroup.Children.Add(mesh.CreateModel());
             }
@@ -155,16 +192,19 @@ namespace CastModelViewer.Util
         /// </summary>
         private void LoadBones(Skeleton skeleton)
         {
-            for (int i = 0; i < skeleton.ChildNodes.Count; i++)
+            var Bones = skeleton.ChildrenOfType<Cast.Bone>();
+
+            for (int i = 0; i < Bones.Count; i++)
             {
                 ModelBones.Add(new ModelFile.ModelBone()
                 {
-                    Name = (string)skeleton.ChildNodes[i].Properties["n"].Values[0],
+                    Name = Bones[i].Name(),
                     Index = i,
-                    Parent = (int)skeleton.ChildNodes[i].Properties["p"].Values[0],
-                    Position = new SELib.Utilities.Vector3(((Vector3)skeleton.ChildNodes[i].Properties["wp"].Values[0]).X,
-                    ((Vector3)skeleton.ChildNodes[i].Properties["wp"].Values[0]).Y,
-                    ((Vector3)skeleton.ChildNodes[i].Properties["wp"].Values[0]).Z)
+                    Parent = Bones[i].ParentIndex(),
+                    Position = new SELib.Utilities.Vector3(
+                        Bones[i].LocalPosition().X,
+                        Bones[i].LocalPosition().Y,
+                        Bones[i].LocalPosition().Z)
                 });
             }
         }
@@ -179,12 +219,25 @@ namespace CastModelViewer.Util
             {
                 var materialGroup = new MaterialGroup();
                 MaterialHashes.Add(material.Hash);
-                string image = Path.Combine(Folder, (string)material.ChildNodes[0].Properties["p"].Values[0]);
-
-                // If we have an image, we can load it, otherwise, assign a random color
-                if (File.Exists(image) && AcceptedImageExtensions.Contains(Path.GetExtension(image), StringComparer.CurrentCultureIgnoreCase) && LoadTextures == true)
+                SEModelMaterials.Add(new SELib.SEModelMaterial()
                 {
-                    materialGroup.Children.Add(new DiffuseMaterial(CreateTextureBrush(image)));
+                    Name = material.Name(),
+                    MaterialData = new SELib.SEModelSimpleMaterial()
+                    {
+                        DiffuseMap = material.DiffuseNode()?.Path(),
+                        NormalMap = material.NormalNode()?.Path(),
+                        SpecularMap = material.SpecularNode()?.Path(),
+                    }
+                });
+                var path = (string)material.DiffuseNode()?.Path();
+                if (!string.IsNullOrEmpty(path))
+                {
+                    string image = Path.Combine(Folder, path);
+                    // If we have an image, we can load it, otherwise, assign a random color
+                    if (File.Exists(image) && AcceptedImageExtensions.Contains(Path.GetExtension(image), StringComparer.CurrentCultureIgnoreCase) && LoadTextures == true)
+                    {
+                        materialGroup.Children.Add(new DiffuseMaterial(CreateTextureBrush(image)));
+                    }
                 }
                 else
                 {

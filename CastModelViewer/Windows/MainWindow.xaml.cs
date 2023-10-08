@@ -262,6 +262,7 @@ namespace CastModelViewer.Windows
                     using (FileStream stream = new FileStream(modelFile.Path, FileMode.Open))
                     {
                         Model3DGroup maybemodel = reader.Read(stream);
+                        modelFile.Materials = reader.SEModelMaterials;
                         modelFile.ModelBones = reader.ModelBones;
                         modelFile.BoneCount = (int)reader.BoneCount;
                         model.Content = maybemodel;
