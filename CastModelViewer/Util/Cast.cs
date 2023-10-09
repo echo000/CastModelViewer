@@ -3,23 +3,17 @@ using System.IO;
 using System.Text;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Windows.Media.Media3D;
-using System.Linq;
 
 namespace Cast
 {
     class Globals
     {
         private static ulong NEXT_HASH = 0;
-        private static readonly object HASH_LOCK = new object();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong CastNextHash()
         {
-            lock (HASH_LOCK)
-            {
-                return NEXT_HASH++;
-            }
+            return NEXT_HASH++;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -35,7 +29,7 @@ namespace Cast
                     return new Bone();
                 case 0x6873656D:
                     return new Mesh();
-                case 0x6C74616D: 
+                case 0x6C74616D:
                     return new Material();
                 case 0x656C6966:
                     return new FileNode();
@@ -347,49 +341,152 @@ namespace Cast
         {
         }
 
-        public List<Vector3> VertexPositions()
+        public string Name()
+        {
+            if (Properties.TryGetValue("n", out CastProperty Value))
+            {
+                return (string)Value.Values[0];
+            }
+
+            return null;
+        }
+
+        public int VertexCount()
         {
             if (Properties.TryGetValue("vp", out CastProperty Value))
             {
-                return Value.Values.OfType<Cast.Vector3>().ToList();
+                return Value.Values.Count;
             }
-            return null;
+
+            return 0;
         }
 
-        public List<Vector3> VertexNormals()
-        {
-            if (Properties.TryGetValue("vn", out CastProperty Value))
-            {
-                return Value.Values.OfType<Cast.Vector3>().ToList();
-            }
-            return null;
-        }
-        
-        public List<Vector2> VertexUVs()
-        {
-            if (Properties.TryGetValue("u0", out CastProperty Value))
-            {
-                return Value.Values.OfType<Cast.Vector2>().ToList();
-            }
-            return null;
-        }
-
-        public List<object> VertexFaces()
+        public int FaceCount()
         {
             if (Properties.TryGetValue("f", out CastProperty Value))
             {
-                return Value.Values;
+                return Value.Values.Count / 3;
             }
-            return null;
+
+            return 0;
         }
 
-        public ulong MaterialHash()
+        public int UVLayerCount()
+        {
+            if (Properties.TryGetValue("ul", out CastProperty Value))
+            {
+                return (int)Value.Values[0];
+            }
+
+            return 0;
+        }
+
+        public int MaximumWeightInfluence()
+        {
+            if (Properties.TryGetValue("mi", out CastProperty Value))
+            {
+                return (int)Value.Values[0];
+            }
+
+            return 0;
+        }
+
+        public IEnumerable<int> FaceBuffer()
+        {
+            if (Properties.TryGetValue("f", out CastProperty Value))
+            {
+                foreach (var Item in Value.Values)
+                {
+                    yield return Convert.ToInt32(Item);
+                }
+            }
+        }
+
+        public IEnumerable<Vector3> VertexPositionBuffer()
+        {
+            if (Properties.TryGetValue("vp", out CastProperty Value))
+            {
+                foreach (var Item in Value.Values)
+                {
+                    yield return (Vector3)Item;
+                }
+            }
+        }
+
+        public IEnumerable<Vector3> VertexNormalBuffer()
+        {
+            if (Properties.TryGetValue("vn", out CastProperty Value))
+            {
+                foreach (var Item in Value.Values)
+                {
+                    yield return (Vector3)Item;
+                }
+            }
+        }
+
+        public IEnumerable<Vector3> VertexTangentBuffer()
+        {
+            if (Properties.TryGetValue("vt", out CastProperty Value))
+            {
+                foreach (var Item in Value.Values)
+                {
+                    yield return (Vector3)Item;
+                }
+            }
+        }
+
+        public IEnumerable<uint> VertexColorBuffer()
+        {
+            if (Properties.TryGetValue("vc", out CastProperty Value))
+            {
+                foreach (var Item in Value.Values)
+                {
+                    yield return (uint)Item;
+                }
+            }
+        }
+
+        public IEnumerable<Vector2> VertexUVLayerBuffer(int Index)
+        {
+            if (Properties.TryGetValue("u" + Index, out CastProperty Value))
+            {
+                foreach (var Item in Value.Values)
+                {
+                    yield return (Vector2)Item;
+                }
+            }
+        }
+
+        public IEnumerable<int> VertexWeightBoneBuffer()
+        {
+            if (Properties.TryGetValue("wb", out CastProperty Value))
+            {
+                foreach (var Item in Value.Values)
+                {
+                    yield return (int)Item;
+                }
+            }
+        }
+
+        public IEnumerable<float> VertexWeightValueBuffer()
+        {
+            if (Properties.TryGetValue("wv", out CastProperty Value))
+            {
+                foreach (var Item in Value.Values)
+                {
+                    yield return (float)Item;
+                }
+            }
+        }
+
+        public Material Material()
         {
             if (Properties.TryGetValue("m", out CastProperty Value))
             {
-                return (ulong)Value.Values[0];
+                return (Cast.Material)ParentNode.ChildByHash((ulong)Value.Values[0]);
             }
-            return 0;
+
+            return null;
         }
     }
 
@@ -406,10 +503,20 @@ namespace Cast
             {
                 return (string)Value.Values[0];
             }
+
+            return null;
+        }
+        public string Type()
+        {
+            if (Properties.TryGetValue("t", out CastProperty Value))
+            {
+                return (string)Value.Values[0];
+            }
+
             return null;
         }
 
-        public ulong DiffuseHash()
+        public ulong AlbedoHash()
         {
             if (Properties.TryGetValue("albedo", out CastProperty Value))
             {
@@ -436,9 +543,9 @@ namespace Cast
             return 0;
         }
 
-        public FileNode DiffuseNode()
+        public FileNode AlbedoNode()
         {
-            if(ChildByHash(DiffuseHash()) is FileNode Node)
+            if (ChildByHash(AlbedoHash()) is FileNode Node)
             {
                 return Node;
             }
@@ -486,6 +593,11 @@ namespace Cast
         public List<Mesh> Meshes()
         {
             return ChildrenOfType<Mesh>();
+        }
+
+        public List<Material> Materials()
+        {
+            return ChildrenOfType<Material>();
         }
     }
 
@@ -608,12 +720,15 @@ namespace Cast
 
             Node.ChildNodes.Capacity = (int)Header.ChildCount;
 
-            if (Header.NodeHash != 0)
-                Node.Hash = Header.NodeHash;
+            Node.Hash = Header.NodeHash;
 
             for (var i = 0; i < Header.ChildCount; i++)
             {
-                Node.ChildNodes.Add(Load(Reader));
+                var ChildNode = Load(Reader);
+
+                ChildNode.ParentNode = Node;
+
+                Node.ChildNodes.Add(ChildNode);
             }
 
             return Node;

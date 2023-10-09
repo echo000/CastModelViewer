@@ -143,11 +143,11 @@ namespace CastModelViewer.Util
                     TriangleIndices = new List<int>(),
                     TextureCoordinates = new List<Point>(),
                     Normals = new List<Vector3D>(),
-                    Material = Materials[MaterialHashes.IndexOf(cmesh.MaterialHash())]
+                    Material = Materials[MaterialHashes.IndexOf(cmesh.Material().Hash)]
                 };
 
-                var VertexPositions = cmesh.VertexPositions();
-                for (int i = 0; i < VertexPositions.Count; i++)
+                var VertexPositions = cmesh.VertexPositionBuffer().ToList();
+                for (int i = 0; i < VertexPositions.Count(); i++)
                 {
                     VertexCount++;
                     mesh.Positions.Add(new Point3D(
@@ -156,7 +156,7 @@ namespace CastModelViewer.Util
                         DotProduct(VertexPositions[i], Axes[UpAxis][2])));
                 }
 
-                var normals = cmesh.VertexNormals();
+                var normals = cmesh.VertexNormalBuffer().ToList();
                 for (int i = 0; i < normals.Count; i++)
                 {
                     mesh.Normals.Add(new Vector3D(
@@ -164,22 +164,17 @@ namespace CastModelViewer.Util
                             DotProduct(normals[i], Axes[UpAxis][1]),
                             DotProduct(normals[i], Axes[UpAxis][2])));
                 }
-                var uvs = cmesh.VertexUVs();
+                var uvs = cmesh.VertexUVLayerBuffer(0).ToList();
                 for(int i = 0; i < uvs.Count; i++)
                 {
-                    mesh.TextureCoordinates.Add(
-                        new Point(
-                                uvs[i].X,
-                                uvs[i].Y));
+                    mesh.TextureCoordinates.Add(new Point(uvs[i].X, uvs[i].Y));
                 }
 
-                var faces = cmesh.VertexFaces();
-                for (var i = 0; i < faces.Count; i += 3)
+                var faces = cmesh.FaceBuffer().ToList();
+                for (var i = 0; i < faces.Count; i++)
                 {
                     FaceCount++;
-                    mesh.TriangleIndices.Add(Convert.ToInt32(faces[i]));
-                    mesh.TriangleIndices.Add(Convert.ToInt32(faces[i + 1]));
-                    mesh.TriangleIndices.Add(Convert.ToInt32(faces[i + 2]));
+                    mesh.TriangleIndices.Add(faces[i]);
                 }
                 modelGroup.Children.Add(mesh.CreateModel());
             }
@@ -214,7 +209,7 @@ namespace CastModelViewer.Util
         /// </summary>
         private void LoadMaterials(Model model)
         {
-            var materials = model.ChildrenOfType<Cast.Material>();
+            var materials = model.Materials();
             foreach (var material in materials)
             {
                 var materialGroup = new MaterialGroup();
@@ -224,12 +219,12 @@ namespace CastModelViewer.Util
                     Name = material.Name(),
                     MaterialData = new SELib.SEModelSimpleMaterial()
                     {
-                        DiffuseMap = material.DiffuseNode()?.Path(),
+                        DiffuseMap = material.AlbedoNode()?.Path(),
                         NormalMap = material.NormalNode()?.Path(),
                         SpecularMap = material.SpecularNode()?.Path(),
                     }
                 });
-                var path = material.DiffuseNode()?.Path();
+                var path = material.AlbedoNode()?.Path();
                 if (!string.IsNullOrEmpty(path))
                 {
                     string image = Path.Combine(Folder, path);
