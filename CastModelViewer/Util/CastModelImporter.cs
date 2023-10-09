@@ -126,7 +126,7 @@ namespace CastModelViewer.Util
             var cast = CastFile.Load(s);
             Model3DGroup modelGroup = new Model3DGroup();
             ModelBones = new List<ModelFile.ModelBone>();
-            var model = cast.RootNodes[0].ChildrenOfType<Cast.Model>().FirstOrDefault();
+            var model = cast.RootNodes[0].ChildrenOfType<Model>().FirstOrDefault();
             var skeleton = model.Skeleton();
             BoneCount = (uint)skeleton.ChildNodes.Count;
             MaterialCount = model.ChildrenOfType<Cast.Material>().Count();
