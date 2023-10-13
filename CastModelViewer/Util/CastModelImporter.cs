@@ -229,7 +229,7 @@ namespace CastModelViewer.Util
                 {
                     string image = Path.Combine(Folder, path);
                     // If we have an image, we can load it, otherwise, assign a random color
-                    if (File.Exists(image) && AcceptedImageExtensions.Contains(Path.GetExtension(image), StringComparer.CurrentCultureIgnoreCase) && LoadTextures == true)
+                    if (System.IO.File.Exists(image) && AcceptedImageExtensions.Contains(Path.GetExtension(image), StringComparer.CurrentCultureIgnoreCase) && LoadTextures == true)
                     {
                         materialGroup.Children.Add(new DiffuseMaterial(CreateTextureBrush(image)));
                     }

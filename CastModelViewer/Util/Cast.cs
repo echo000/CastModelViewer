@@ -1,8 +1,8 @@
 ﻿using System;
-using System.IO;
-using System.Text;
 using System.Collections.Generic;
+using System.IO;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace Cast
 {
@@ -32,7 +32,17 @@ namespace Cast
                 case 0x6C74616D:
                     return new Material();
                 case 0x656C6966:
-                    return new FileNode();
+                    return new File();
+                case 0x6D696E61:
+                    return new Animation();
+                case 0x76727563:
+                    return new Curve();
+                case 0x6669746E:
+                    return new NotificationTrack();
+                case 0x68736C62:
+                    return new BlendShape();
+                case 0x746F6F72:
+                    return new Root();
                 default:
                     return new CastNode(Identifier);
             }
@@ -233,6 +243,46 @@ namespace Cast
         public float W { get; set; }
     }
 
+    public class BlendShape : CastNode
+    {
+        public BlendShape()
+            : base(0x68736C62)
+        {
+        }
+
+        public Mesh BaseShape()
+        {
+            if (Properties.TryGetValue("b", out CastProperty Value))
+            {
+                return (Mesh)ChildByHash((ulong)Value.Values[0]);
+            }
+
+            return null;
+        }
+
+        public IEnumerable<Mesh> TargetShapes()
+        {
+            if (Properties.TryGetValue("t", out CastProperty Value))
+            {
+                foreach (var Item in Value.Values)
+                {
+                    yield return (Mesh)ChildByHash((ulong)Item);
+                }
+            }
+        }
+
+        public IEnumerable<float> TargetWeightScales()
+        {
+            if (Properties.TryGetValue("ts", out CastProperty Value))
+            {
+                foreach (var Item in Value.Values)
+                {
+                    yield return (float)Item;
+                }
+            }
+        }
+    }
+
     public class Bone : CastNode
     {
         public Bone()
@@ -267,7 +317,7 @@ namespace Cast
                 return (int)Value.Values[0] == 1;
             }
 
-            return false;
+            return true;
         }
 
         public Vector3 LocalPosition()
@@ -321,6 +371,9 @@ namespace Cast
         }
     }
 
+    /// <summary>
+    /// A collection of bones for a model or animation.
+    /// </summary>
     public class Skeleton : CastNode
     {
         public Skeleton()
@@ -334,6 +387,9 @@ namespace Cast
         }
     }
 
+    /// <summary>
+    /// A 3d mesh for a model.
+    /// </summary>
     public class Mesh : CastNode
     {
         public Mesh()
@@ -490,6 +546,9 @@ namespace Cast
         }
     }
 
+    /// <summary>
+    /// Material contains a collection of slot:file mappings.
+    /// </summary>
     public class Material : CastNode
     {
         public Material()
@@ -543,31 +602,59 @@ namespace Cast
             return 0;
         }
 
-        public FileNode AlbedoNode()
+        public Dictionary<string, File> Slots()
         {
-            if (ChildByHash(AlbedoHash()) is FileNode Node)
+            var Result = new Dictionary<string, File>();
+
+            foreach (var Slot in Properties)
+            {
+                if (Slot.Value.Name == "n" || Slot.Value.Name == "t")
+                {
+                    continue;
+                }
+
+                if (!Result.ContainsKey(Slot.Value.Name))
+                {
+                    Result.Add(Slot.Value.Name, (File)ChildByHash((ulong)Slot.Value.Values[0]));
+                }
+            }
+
+            return Result;
+        }
+
+        public File AlbedoNode()
+        {
+            if (ChildByHash(AlbedoHash()) is File Node)
             {
                 return Node;
             }
             return null;
         }
 
-        public FileNode NormalNode()
+        public File NormalNode()
         {
-            if (ChildByHash(NormalHash()) is FileNode Node)
+            if (ChildByHash(NormalHash()) is File Node)
             {
                 return Node;
             }
             return null;
         }
 
-        public FileNode SpecularNode()
+        public File SpecularNode()
         {
-            if (ChildByHash(SpecularHash()) is FileNode Node)
+            if (ChildByHash(SpecularHash()) is File Node)
             {
                 return Node;
             }
             return null;
+        }
+    }
+
+    public class Root : CastNode
+    {
+        public Root()
+            : base(0x746F6F72)
+        {
         }
     }
 
@@ -599,11 +686,163 @@ namespace Cast
         {
             return ChildrenOfType<Material>();
         }
+
+        public List<BlendShape> BlendShapes()
+        {
+            return ChildrenOfType<BlendShape>();
+        }
     }
 
-    public class FileNode : CastNode
+    public class Animation : CastNode
     {
-        public FileNode()
+        public Animation()
+            : base(0x6D696E61)
+        {
+        }
+
+        public Skeleton Skeleton()
+        {
+            var Result = ChildrenOfType<Skeleton>();
+
+            if (Result.Count > 0)
+            {
+                return Result[0];
+            }
+
+            return null;
+        }
+
+        public List<Curve> Curves()
+        {
+            return ChildrenOfType<Curve>();
+        }
+
+        public List<NotificationTrack> Notifications()
+        {
+            return ChildrenOfType<NotificationTrack>();
+        }
+
+        public float Framerate()
+        {
+            if (Properties.TryGetValue("fr", out CastProperty Value))
+            {
+                return (float)Value.Values[0];
+            }
+
+            return 30.0f;
+        }
+
+        public bool Looping()
+        {
+            if (Properties.TryGetValue("lo", out CastProperty Value))
+            {
+                return (bool)Value.Values[0];
+            }
+
+            return false;
+        }
+    }
+
+    public class Curve : CastNode
+    {
+        public Curve()
+            : base(0x76727563)
+        {
+        }
+
+        public string NodeName()
+        {
+            if (Properties.TryGetValue("nn", out CastProperty Value))
+            {
+                return (string)Value.Values[0];
+            }
+
+            return null;
+        }
+
+        public string KeyPropertyName()
+        {
+            if (Properties.TryGetValue("kp", out CastProperty Value))
+            {
+                return (string)Value.Values[0];
+            }
+
+            return null;
+        }
+        public IEnumerable<int> KeyFrameBuffer()
+        {
+            if (Properties.TryGetValue("kb", out CastProperty Value))
+            {
+                foreach (var Item in Value.Values)
+                {
+                    yield return (int)Item;
+                }
+            }
+        }
+
+        public IEnumerable<T> KeyValueBuffer<T>()
+        {
+            if (Properties.TryGetValue("kv", out CastProperty Value))
+            {
+                foreach (var Item in Value.Values)
+                {
+                    yield return (T)Item;
+                }
+            }
+        }
+
+        public string Mode()
+        {
+            if (Properties.TryGetValue("m", out CastProperty Value))
+            {
+                return (string)Value.Values[0];
+            }
+
+            return null;
+        }
+
+        public float AdditiveblendWeight()
+        {
+            if (Properties.TryGetValue("ab", out CastProperty Value))
+            {
+                return (float)Value.Values[0];
+            }
+
+            return 1.0f;
+        }
+    }
+    public class NotificationTrack : CastNode
+    {
+        public NotificationTrack()
+            : base(0x6669746E)
+        {
+        }
+
+        public string Name()
+        {
+            if (Properties.TryGetValue("n", out CastProperty Value))
+            {
+                return (string)Value.Values[0];
+            }
+
+            return null;
+        }
+
+        public IEnumerable<int> KeyFrameBuffer()
+        {
+            if (Properties.TryGetValue("kb", out CastProperty Value))
+            {
+                foreach (var Item in Value.Values)
+                {
+                    yield return (int)Item;
+                }
+            }
+        }
+    }
+
+    public class File : CastNode
+    {
+        public File()
             : base(0x656C6966)
         {
         }
@@ -614,7 +853,8 @@ namespace Cast
             {
                 return (string)Value.Values[0];
             }
-            return "";
+
+            return null;
         }
     }
 
@@ -740,6 +980,9 @@ namespace Cast
         }
     }
 
+    /// <summary>
+    /// A collection of root nodes in this file.
+    /// </summary>
     public class CastFile
     {
         public List<CastNode> RootNodes { get; set; }
@@ -749,6 +992,12 @@ namespace Cast
             RootNodes = new List<CastNode>();
         }
 
+        /// <summary>
+        /// Loads a cast file from the given stream.
+        /// </summary>
+        /// <param name="IOStream"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
         public static CastFile Load(Stream IOStream)
         {
             var Reader = new BinaryReader(IOStream);
@@ -771,11 +1020,20 @@ namespace Cast
             return Result;
         }
 
+        /// <summary>
+        /// Loads a cast file from the given path.
+        /// </summary>
+        /// <param name="Path"></param>
+        /// <returns></returns>
         public static CastFile Load(string Path)
         {
-            return Load(File.OpenRead(Path));
+            return Load(System.IO.File.OpenRead(Path));
         }
 
+        /// <summary>
+        /// Saves a cast file to the given stream.
+        /// </summary>
+        /// <param name="IOStream"></param>
         public void Save(Stream IOStream)
         {
             var Writer = new BinaryWriter(IOStream);
@@ -792,9 +1050,13 @@ namespace Cast
             }
         }
 
+        /// <summary>
+        /// Saves a cast file to the given path.
+        /// </summary>
+        /// <param name="Path"></param>
         public void Save(string Path)
         {
-            Save(File.Create(Path));
+            Save(System.IO.File.Create(Path));
         }
     }
 }

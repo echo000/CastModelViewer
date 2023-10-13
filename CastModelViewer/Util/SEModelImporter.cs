@@ -2,17 +2,17 @@
 // CastModelViewer - Tool to view SEModel Files
 // Copyright (C) 2018 Philip/Scobalula
 // ------------------------------------------------------------------------
+using HelixToolkit.Wpf;
+using SELib;
+using SELib.Utilities;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Media.Media3D;
-using SELib;
-using SELib.Utilities;
-using HelixToolkit.Wpf;
-using System.Linq;
 
 namespace CastModelViewer.Util
 {

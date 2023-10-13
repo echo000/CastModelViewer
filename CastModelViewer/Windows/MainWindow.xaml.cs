@@ -3,30 +3,25 @@
 // Copyright (C) 2018 Philip/Scobalula
 // ------------------------------------------------------------------------
 #define TRACE
+using CastModelViewer.Util;
+using Microsoft.Win32;
+using SELib;
 using System;
-using System.Threading;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.IO;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
-using System.Windows.Media.Media3D;
-using System.Windows.Media.Imaging;
-using Microsoft.Win32;
-using System.Linq;
-using CastModelViewer;
-using CastModelViewer.Util;
-using SELib;
 using System.Windows.Data;
 using System.Windows.Documents;
-using System.Reflection;
 using System.Windows.Input;
-using System.Runtime.InteropServices;
-using System.Windows.Interop;
-using HelixToolkit.Wpf;
-using Cast;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Media.Media3D;
 
 namespace CastModelViewer.Windows
 {
@@ -768,7 +763,7 @@ namespace CastModelViewer.Windows
 
                 foreach (string file in files)
                 {
-                    if ((Path.GetExtension(file) == ".semodel" || Path.GetExtension(file) == ".cast") && File.Exists(file))
+                    if ((Path.GetExtension(file) == ".semodel" || Path.GetExtension(file) == ".cast") && System.IO.File.Exists(file))
                     {
                         ProcessModel(file, true);
                         RefreshModelList();
@@ -799,7 +794,7 @@ namespace CastModelViewer.Windows
                     if (EndThread)
                         return;
 
-                    if(File.Exists(path))
+                    if(System.IO.File.Exists(path))
                     {
                         if(Path.GetExtension(path) == ".semodel" || Path.GetExtension(path) == ".cast")
                         {
