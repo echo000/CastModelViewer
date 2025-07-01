@@ -1,0 +1,31 @@
+[package]
+name = "cast_viewer"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "cast_viewer"
+path = "src/main.rs"
+
+[build-dependencies]
+embed-manifest = "1.4"
+
+[profile.dev]
+opt-level = 2
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+
+[patch.crates-io]
+iced = { git = "https://github.com/dtzxporter/iced", rev = "d4fc744243da36d7fc1c62d30b38306f2c8caa2f" }
+
+[dependencies]
+porter-model = { git = "https://github.com/dtzxporter/porter-lib" }
+porter-math = { git = "https://github.com/dtzxporter/porter-lib" }
+porter-ui = { git = "https://github.com/dtzxporter/porter-lib" }
+porter-utils = { git = "https://github.com/dtzxporter/porter-lib" }
+porter-texture = { git = "https://github.com/dtzxporter/porter-lib" }
+porter-threads = { git = "https://github.com/dtzxporter/porter-lib" }
+rayon = "1.10.0"
+byteorder = "1.5.0"
