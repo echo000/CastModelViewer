@@ -14,7 +14,7 @@ use crate::cast_model;
 pub struct Asset {
     pub name: String,
     pub file_name: PathBuf,
-    pub cast: cast_model::CastNode,
+    //pub cast: cast_model::CastNode,
     pub status: PorterAssetStatus,
 }
 
@@ -147,15 +147,26 @@ impl PorterAssetManager for AssetManager {
         for file_name in &files {
             if let Some(ext) = file_name.extension().and_then(|ext| ext.to_str()) {
                 if ext == "cast" {
-                    let mut file =
-                        File::open(file_name).map_err(|_| "Failed to open file".to_string())?;
-
-                    let assets = cast_model::load_cast_file(file_name, &mut file)
-                        .map_err(|_| "Failed to cast file".to_string())?;
+                    let asset = Asset {
+                        name: file_name
+                            .file_stem()
+                            .and_then(|stem| stem.to_str())
+                            .unwrap_or_default()
+                            .to_string(),
+                        file_name: file_name.to_path_buf(),
+                        status: PorterAssetStatus::loaded(),
+                    };
 
                     // Assign to shared state
                     let mut loaded = self.loaded_assets.write();
-                    loaded.as_mut().unwrap().extend(assets);
+                    match loaded.as_mut() {
+                        Ok(loaded) => {
+                            loaded.push(asset);
+                        }
+                        Err(_) => {
+                            return Err("Failed to acquire write lock on loaded assets".to_string());
+                        }
+                    }
                 }
             }
         }
@@ -181,18 +192,22 @@ impl PorterAssetManager for AssetManager {
             let name = PathBuf::from(&selected_asset.name)
                 .file_stem()
                 .and_then(|s| s.to_str())
-                .unwrap_or("Unnamed")
+                .unwrap_or(&selected_asset.name)
                 .to_string();
 
             (name, selected_asset)
         };
 
-        let model = cast_model::process_model_node(&asset_ref.cast);
-        let images = cast_model::load_model_images(&model, &asset_ref.file_name);
-        ui.preview(
-            Some(PorterPreviewAsset::Model(asset_name.clone(), model, images)),
-            request_id,
-        );
+        // Try to open and process the model (return None on any failure)
+        let preview = File::open(&asset_ref.file_name).ok().and_then(|mut f| {
+            cast_model::load_cast_file(&mut f).map(|cast| {
+                let model = cast_model::process_model_node(&cast);
+                let images = cast_model::load_model_images(&model, &asset_ref.file_name);
+                PorterPreviewAsset::Model(asset_name, model, images)
+            })
+        });
+
+        ui.preview(preview, request_id);
     }
 
     /// Cancels an active export.

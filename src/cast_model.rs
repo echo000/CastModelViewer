@@ -8,9 +8,11 @@ use porter_model::{
 use porter_texture::{Image, ImageFileType};
 use porter_ui::PorterAssetStatus;
 use porter_utils::{StringReadExt, StructReadExt};
-use std::collections::HashMap;
-use std::io::{Read, Seek};
-use std::path::Path;
+use std::{
+    collections::HashMap,
+    io::{Read, Seek},
+    path::Path,
+};
 
 #[derive(Clone, Debug)]
 pub enum PropertyValue {
@@ -60,6 +62,19 @@ impl PropertyValue {
     pub fn get_vector3(&self) -> Option<Vector3> {
         match self {
             PropertyValue::Vector3(vector) => Some(*vector),
+            _ => None,
+        }
+    }
+    pub fn get_float(&self) -> Option<f32> {
+        match self {
+            PropertyValue::Float(value) => Some(*value),
+            _ => None,
+        }
+    }
+
+    pub fn get_double(&self) -> Option<f64> {
+        match self {
+            PropertyValue::Double(value) => Some(*value),
             _ => None,
         }
     }
@@ -117,10 +132,10 @@ pub struct CastProperty {
 }
 
 impl CastProperty {
-    pub fn new(name: String, prop_type: String) -> Self {
+    pub fn new(name: String, property_type: String) -> Self {
         CastProperty {
             name,
-            property_type: prop_type,
+            property_type,
             values: Vec::new(),
         }
     }
@@ -205,13 +220,13 @@ impl CastNode {
         Ok(node)
     }
 
-    pub(crate) fn clone(&self) -> CastNode {
+    pub fn clone(&self) -> CastNode {
         Self {
             identifier: self.identifier,
             hash: self.hash,
-            properties: self.properties.clone(), // Clone the HashMap
-            child_nodes: self.child_nodes.clone(), // Clone the Vec
-            parent_node: self.parent_node,       // Clone the Option
+            properties: self.properties.clone(),
+            child_nodes: self.child_nodes.clone(),
+            parent_node: self.parent_node,
         }
     }
 }
@@ -284,41 +299,25 @@ pub fn load_model_images(model: &Model, file_name: &Path) -> Vec<Option<Image>> 
         }
     }
     if img.is_empty() {
-        for mats in &model.materials {
+        for _ in &model.materials {
             img.push(None);
         }
     }
     img
 }
 
-pub fn load_cast_file<R: Read + Seek>(
-    file_name: &Path,
-    reader: &mut R,
-) -> Result<Vec<Asset>, std::io::Error> {
-    let cast = CastFile::load(reader)?;
-    let mut assets: Vec<Asset> = Vec::new();
-    if let Some(cast_model) = cast.root_nodes.first() {
-        if let Some(model_node) = cast_model
-            .child_nodes
-            .iter()
-            .find(|node| matches!(node.identifier, 0x6C646F6D))
-        {
-            let asset = Asset {
-                cast: model_node.clone(),
-                name: file_name
-                    .file_stem()
-                    .and_then(|stem| stem.to_str())
-                    .unwrap_or_default()
-                    .to_string(),
-                file_name: file_name.to_path_buf(),
-                status: PorterAssetStatus::loaded(),
-            };
-            assets.push(asset);
-        } else {
-            eprintln!("No model node found in the cast file");
-        }
-    }
-    Ok(assets)
+pub fn load_cast_file<R: Read + Seek>(reader: &mut R) -> Option<CastNode> {
+    CastFile::load(reader)
+        .ok()?
+        .root_nodes
+        .first()
+        .and_then(|cast_model| {
+            cast_model
+                .child_nodes
+                .iter()
+                .find(|node| node.identifier == 0x6C646F6D)
+                .cloned()
+        })
 }
 
 pub fn process_model_node(model_node: &CastNode) -> Model {
@@ -456,7 +455,7 @@ fn process_mesh_nodes(model_node: &CastNode, model: &mut Model) {
 
             // Vertex Positions
             if let Some(vp_property) = child_node.properties.get("vp") {
-                for (i, value) in vp_property.values.iter().enumerate() {
+                for value in vp_property.values.iter() {
                     if let Some(pos) = value.get_vector3() {
                         vertex_buffer.create().set_position(pos);
                     }
