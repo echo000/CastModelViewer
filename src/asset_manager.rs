@@ -5,6 +5,7 @@ use porter_ui::{
 };
 use rayon::prelude::*;
 use std::fs::File;
+use std::io::{Cursor, Read};
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
@@ -198,13 +199,19 @@ impl PorterAssetManager for AssetManager {
             (name, selected_asset)
         };
 
-        // Try to open and process the model (return None on any failure)
         let preview = File::open(&asset_ref.file_name).ok().and_then(|mut f| {
-            cast_model::load_cast_file(&mut f).map(|cast| {
-                let model = cast_model::process_model_node(&cast);
-                let images = cast_model::load_model_images(&model, &asset_ref.file_name);
-                PorterPreviewAsset::Model(asset_name, model, images)
-            })
+            let mut buffer = Vec::new();
+            if f.read_to_end(&mut buffer).is_ok() {
+                let mut cursor = Cursor::new(&buffer);
+                cast_model::load_cast_file(&mut cursor).and_then(|cast| {
+                    cast_model::process_model_node(&cast).map(|model| {
+                        let images = cast_model::load_model_images(&model, &asset_ref.file_name);
+                        PorterPreviewAsset::Model(asset_name, model, images)
+                    })
+                })
+            } else {
+                None
+            }
         });
 
         ui.preview(preview, request_id);

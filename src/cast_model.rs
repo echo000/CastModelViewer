@@ -6,6 +6,7 @@ use porter_model::{
 };
 use porter_texture::{Image, ImageFileType};
 use porter_utils::{StringReadExt, StructReadExt};
+use rayon::prelude::*;
 use std::{
     collections::HashMap,
     io::{Read, Seek},
@@ -247,51 +248,44 @@ impl CastFile {
 }
 
 pub fn load_model_images(model: &Model, file_name: &Path) -> Vec<Option<Image>> {
-    let mut img = Vec::new();
-    for mats in &model.materials {
-        if mats.textures.is_empty() {
-            img.push(None);
-            continue;
-        }
-        for images in &mats.textures {
-            if images.texture_usage == MaterialTextureRefUsage::Diffuse
-                || images.texture_usage == MaterialTextureRefUsage::Albedo
-            {
+    model
+        .materials
+        .par_iter()
+        .map(|mats| {
+            // Find the first texture with matching usage
+            let texture = mats.textures.iter().find(|images| {
+                images.texture_usage == MaterialTextureRefUsage::Diffuse
+                    || images.texture_usage == MaterialTextureRefUsage::Albedo
+            });
+            if let Some(images) = texture {
                 let directory = file_name.parent().unwrap_or(Path::new("."));
                 let f = directory.join(&images.file_name);
-                // Assuming `f` is the file name
-                let image_file_type = match f.extension() {
-                    Some(ext) => match ext.to_str() {
-                        Some("png") => ImageFileType::Png,
-                        Some("dds") => ImageFileType::Dds,
-                        Some("tiff") => ImageFileType::Tiff,
-                        _ => {
-                            eprintln!("Unsupported file extension: {}", ext.to_string_lossy());
-                            ImageFileType::Dds
-                        }
-                    },
+                let image_file_type = match f.extension().and_then(|ext| ext.to_str()) {
+                    Some("png") => ImageFileType::Png,
+                    Some("dds") => ImageFileType::Dds,
+                    Some("tiff") => ImageFileType::Tiff,
+                    Some("tga") => ImageFileType::Tga,
+                    Some(ext) => {
+                        eprintln!("Unsupported file extension: {ext}");
+                        ImageFileType::Dds
+                    }
                     None => {
                         eprintln!("File has no extension");
                         ImageFileType::Dds
                     }
                 };
-                let image = match Image::load(f, image_file_type) {
+                match Image::load(f, image_file_type) {
                     Ok(image) => Some(image),
                     Err(err) => {
                         eprintln!("Failed to load image: {}: {:?}", &images.file_name, err);
                         None
                     }
-                };
-                img.push(image);
+                }
+            } else {
+                None
             }
-        }
-    }
-    if img.is_empty() {
-        for _ in &model.materials {
-            img.push(None);
-        }
-    }
-    img
+        })
+        .collect()
 }
 
 pub fn load_cast_file<R: Read + Seek>(reader: &mut R) -> Option<CastNode> {
@@ -308,27 +302,28 @@ pub fn load_cast_file<R: Read + Seek>(reader: &mut R) -> Option<CastNode> {
         })
 }
 
-pub fn process_model_node(model_node: &CastNode) -> Model {
+pub fn process_model_node(model_node: &CastNode) -> Option<Model> {
     let mut model = Model::new();
-    model.skeleton = process_skeleton_node(
-        model_node
-            .child_nodes
-            .iter()
-            .find(|node| matches!(node.identifier, 0x6C656B73))
-            .expect("Skeleton node not found"),
-    );
+    model.skeleton = model_node
+        .child_nodes
+        .iter()
+        .find(|node| node.identifier == 0x6C656B73)
+        .map(process_skeleton_node)
+        .unwrap_or_else(Skeleton::new);
     process_material_nodes(model_node, &mut model);
     process_mesh_nodes(model_node, &mut model);
-    model
+    Some(model)
 }
 
 fn process_skeleton_node(skeleton_node: &CastNode) -> Skeleton {
+    let bones = skeleton_node
+        .child_nodes
+        .iter()
+        .filter(|bone_node| bone_node.identifier == 0x656E6F62)
+        .map(process_bone_node)
+        .collect();
     let mut skeleton = Skeleton::new();
-    for bone_node in &skeleton_node.child_nodes {
-        if bone_node.identifier == 0x656E6F62 {
-            skeleton.bones.push(process_bone_node(bone_node));
-        }
-    }
+    skeleton.bones = bones;
     skeleton
 }
 
@@ -372,8 +367,11 @@ fn process_bone_node(bone_node: &CastNode) -> Bone {
 }
 
 fn process_material_nodes(model_node: &CastNode, model: &mut Model) {
-    for child_node in &model_node.child_nodes {
-        if child_node.identifier == 0x6C74616D {
+    let new_materials: Vec<Material> = model_node
+        .child_nodes
+        .par_iter()
+        .filter(|child_node| child_node.identifier == 0x6C74616D)
+        .map(|child_node| {
             let name = child_node
                 .properties
                 .get("n")
@@ -414,16 +412,24 @@ fn process_material_nodes(model_node: &CastNode, model: &mut Model) {
                     }
                 }
             }
-            model.materials.push(material);
-        }
-    }
+            material
+        })
+        .collect();
+    model.materials.extend(new_materials);
 }
 
 fn process_mesh_nodes(model_node: &CastNode, model: &mut Model) {
-    let mut mesh_index = 0;
-    for child_node in &model_node.child_nodes {
-        if child_node.identifier == 0x6873656D {
-            // Perform operations on each Mesh node
+    // Gather all mesh nodes first
+    let mesh_nodes: Vec<&CastNode> = model_node
+        .child_nodes
+        .iter()
+        .filter(|child_node| child_node.identifier == 0x6873656D)
+        .collect();
+
+    // Build meshes in parallel
+    let mut meshes: Vec<Mesh> = mesh_nodes
+        .par_iter()
+        .map(|child_node| {
             let uv_layers = child_node
                 .properties
                 .get("ul")
@@ -485,10 +491,14 @@ fn process_mesh_nodes(model_node: &CastNode, model: &mut Model) {
                     face_buffer.push(Face::new(a, b, c));
                 }
             }
-            let mut mesh = Mesh::new(face_buffer, vertex_buffer);
-            mesh.material = Some(mesh_index);
-            mesh_index += 1;
-            model.meshes.push(mesh);
-        }
+            Mesh::new(face_buffer, vertex_buffer)
+        })
+        .collect();
+
+    // Assign material indices in sequential order
+    for (i, mesh) in meshes.iter_mut().enumerate() {
+        mesh.material = Some(i);
     }
+
+    model.meshes.extend(meshes);
 }
