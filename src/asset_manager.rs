@@ -1,3 +1,4 @@
+use porter_cast::CastId;
 use porter_threads::ParallelIterator;
 use porter_ui::{
     Color, PorterAssetManager, PorterAssetStatus, PorterColorPalette, PorterPreviewAsset,
@@ -201,17 +202,19 @@ impl PorterAssetManager for AssetManager {
 
         let preview = File::open(&asset_ref.file_name).ok().and_then(|mut f| {
             let mut buffer = Vec::new();
-            if f.read_to_end(&mut buffer).is_ok() {
-                let mut cursor = Cursor::new(&buffer);
-                cast_model::load_cast_file(&mut cursor).and_then(|cast| {
-                    cast_model::process_model_node(&cast).map(|model| {
-                        let images = cast_model::load_model_images(&model, &asset_ref.file_name);
-                        PorterPreviewAsset::Model(asset_name, model, images)
-                    })
-                })
-            } else {
-                None
+            if f.read_to_end(&mut buffer).is_err() {
+                return None;
             }
+            let mut cursor = Cursor::new(&buffer);
+            let file = porter_cast::CastFile::read(&mut cursor).ok()?;
+            let model_node = file
+                .roots()
+                .next()
+                .and_then(|root| root.children_of_type(CastId::Model).next())?;
+            // You must NOT return references into `file` or `model_node` here.
+            let model = cast_model::process_model_node(model_node)?;
+            let images = cast_model::load_model_images(&model, &asset_ref.file_name);
+            Some(PorterPreviewAsset::Model(asset_name, model, images))
         });
 
         ui.preview(preview, request_id);
