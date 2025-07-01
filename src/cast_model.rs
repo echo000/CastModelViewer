@@ -1,4 +1,3 @@
-use crate::asset_manager::Asset;
 use byteorder::{LittleEndian, ReadBytesExt};
 use porter_math::{Quaternion, Vector2, Vector3, Vector4};
 use porter_model::{
@@ -6,7 +5,6 @@ use porter_model::{
     Skeleton, VertexBuffer,
 };
 use porter_texture::{Image, ImageFileType};
-use porter_ui::PorterAssetStatus;
 use porter_utils::{StringReadExt, StructReadExt};
 use std::{
     collections::HashMap,
@@ -218,16 +216,6 @@ impl CastNode {
         }
 
         Ok(node)
-    }
-
-    pub fn clone(&self) -> CastNode {
-        Self {
-            identifier: self.identifier,
-            hash: self.hash,
-            properties: self.properties.clone(),
-            child_nodes: self.child_nodes.clone(),
-            parent_node: self.parent_node,
-        }
     }
 }
 
