@@ -148,7 +148,6 @@ fn process_material_nodes(model_node: &CastNode, model: &mut Model) {
 fn process_mesh_nodes(model_node: &CastNode, model: &mut Model) {
     // Gather all mesh nodes first
     let mesh_nodes: Vec<&CastNode> = model_node.children_of_type(CastId::Mesh).collect();
-    let material_nodes: Vec<&CastNode> = model_node.children_of_type(CastId::Material).collect();
 
     let meshes: Vec<Mesh> = mesh_nodes
         .par_iter()
