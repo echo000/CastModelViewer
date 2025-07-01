@@ -7,7 +7,6 @@ CastModelViewer is a WIP, Rust-based tool for viewing and previewing `.cast` mod
 ## Features
 
 - Loads and previews Cast model files (`.cast`)
-- Uses [`porter-lib`](https://github.com/dtzxporter/porter-lib) for model parsing and asset handling
 - Cross-platform: Windows, Linux, macOS
 
 ---
