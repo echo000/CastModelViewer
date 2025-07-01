@@ -66,7 +66,7 @@ You can build from source using Cargo, or download the old prebuilt releases fro
 - **Scobalula**  
   - [SEModelViewer](https://github.com/Scobalula/SEModelViewer/) – Inspiration for Cast model viewing
 - **DTZxPorter**  
-  - [@dtzxporter/porter-lib](https://github.com/dtzxporter/porter-lib)
+  - [porter-lib](https://github.com/dtzxporter/porter-lib)
   - [Cast](https://github.com/dtzxporter/cast)
 
 ---
