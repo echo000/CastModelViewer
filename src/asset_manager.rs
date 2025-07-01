@@ -70,7 +70,7 @@ impl AssetManager {
 impl PorterAssetManager for AssetManager {
     /// Returns the asset info in the form of the columns to render.
     /// Returns the asset info in the form of the columns to render.
-    fn asset_info(&self, index: usize, _columns: usize) -> Vec<(String, Option<Color>)> {
+    fn asset_info(&self, index: usize) -> Vec<(String, Option<Color>)> {
         let search = self.search_assets.read().unwrap();
         let loaded_assets = self.loaded_assets.read().unwrap();
 

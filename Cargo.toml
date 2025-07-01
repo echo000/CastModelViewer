@@ -21,11 +21,11 @@ codegen-units = 1
 iced = { git = "https://github.com/dtzxporter/iced", rev = "d4fc744243da36d7fc1c62d30b38306f2c8caa2f" }
 
 [dependencies]
-porter-model = { git = "https://github.com/dtzxporter/porter-lib" }
-porter-math = { git = "https://github.com/dtzxporter/porter-lib" }
-porter-ui = { git = "https://github.com/dtzxporter/porter-lib" }
-porter-utils = { git = "https://github.com/dtzxporter/porter-lib" }
-porter-texture = { git = "https://github.com/dtzxporter/porter-lib" }
-porter-threads = { git = "https://github.com/dtzxporter/porter-lib" }
+porter-model = { git = "https://github.com/echo000/porter-lib/", branch = "cast_viewer" }
+porter-math = { git = "https://github.com/echo000/porter-lib/", branch = "cast_viewer" }
+porter-ui = { git = "https://github.com/echo000/porter-lib/", branch = "cast_viewer" }
+porter-utils = { git = "https://github.com/echo000/porter-lib/", branch = "cast_viewer" }
+porter-texture = { git = "https://github.com/echo000/porter-lib/", branch = "cast_viewer" }
+porter-threads = { git = "https://github.com/echo000/porter-lib/", branch = "cast_viewer" }
 rayon = "1.10.0"
 byteorder = "1.5.0"
