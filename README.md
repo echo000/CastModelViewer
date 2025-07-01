@@ -1,6 +1,6 @@
 # CastModelViewer (The Rust Edition)
 
-CastModelViewer is a WIP, Rust-based tool for viewing and previewing `.cast` model files. It is a full rewrite of the original [CastModelViewer](https://github.com/echo000/CastModelViewer/tree/old-csharp) using [@dtzxporter/porter-lib](https://github.com/dtzxporter/porter-lib) for cross-platform model parsing and rendering.
+CastModelViewer is a WIP, Rust-based tool for viewing and previewing `.cast` model files. It is a full rewrite of the original [CastModelViewer](https://github.com/echo000/CastModelViewer/tree/old-csharp) using [porter-lib](https://github.com/dtzxporter/porter-lib) for cross-platform model parsing and rendering.
 
 ---
 
