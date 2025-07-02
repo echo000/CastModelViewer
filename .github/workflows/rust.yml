@@ -1,48 +1,30 @@
-name: Build and Release
+# .github/workflows/release.yml
 
 on:
   release:
     types: [created]
 
 jobs:
-  build:
-    name: Build and Release Binaries
-    runs-on: ${{ matrix.os }}
+  release:
+    name: release ${{ matrix.target }}
+    runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - target: x86_64-pc-windows-gnu
+            archive: zip
+          - target: x86_64-unknown-linux-musl
+            archive: tar.gz tar.xz tar.zst
+          - target: x86_64-apple-darwin
+            archive: zip
     steps:
-      - uses: actions/checkout@v4
-        with:
-            toolchain: 1.85.0
-
-      # Install Rust (uses the version in rust-toolchain file if present)
-      - uses: dtolnay/rust-toolchain@stable
-
-      # Build the project (adjust --release and target if necessary)
-      - name: Build
-        run: cargo build --release
-
-      # Rename and prepare the binary for upload per OS
-      - name: Prepare binary
-        run: |
-          BINARY_NAME="cast_model_viewer"
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            mv target/release/${BINARY_NAME}.exe ${BINARY_NAME}-windows.exe
-            echo "ASSET=${BINARY_NAME}-windows.exe" >> $GITHUB_ENV
-          elif [ "${{ runner.os }}" = "macOS" ]; then
-            mv target/release/${BINARY_NAME} ${BINARY_NAME}-macos
-            echo "ASSET=${BINARY_NAME}-macos" >> $GITHUB_ENV
-          else
-            mv target/release/${BINARY_NAME} ${BINARY_NAME}-linux
-            echo "ASSET=${BINARY_NAME}-linux" >> $GITHUB_ENV
-          fi
-        shell: bash
-
-      # Upload the binary as a release asset
-      - name: Upload Release Asset
-        uses: softprops/action-gh-release@v2
-        with:
-          files: ${{ env.ASSET }}
+      - uses: actions/checkout@master
+      - name: Compile and release
+        uses: rust-build/rust-build.action@v1.4.5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TOOLCHAIN_VERSION: 1.85
+        with:
+          RUSTTARGET: ${{ matrix.target }}
+          ARCHIVE_TYPES: ${{ matrix.archive }}
