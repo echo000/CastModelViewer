@@ -1,4 +1,4 @@
-use porter_cast::CastId;
+use porter_cast::{CastFile, CastId};
 use porter_threads::ParallelIterator;
 use porter_ui::{
     Color, PorterAssetManager, PorterAssetStatus, PorterColorPalette, PorterPreviewAsset,
@@ -206,7 +206,7 @@ impl PorterAssetManager for AssetManager {
                 return None;
             }
             let mut cursor = Cursor::new(&buffer);
-            let file = porter_cast::CastFile::read(&mut cursor).ok()?;
+            let file = CastFile::read(&mut cursor).ok()?;
             let model_node = file
                 .roots()
                 .next()

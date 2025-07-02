@@ -114,11 +114,11 @@ fn process_material_nodes(model_node: &CastNode, model: &mut Model) {
             let mut material = Material::new(name);
 
             let albedo_hash = child_node
-                .property("diffuse")
+                .property("albedo")
                 .and_then(|p| p.values::<u64>().next())
                 .or_else(|| {
                     child_node
-                        .property("albedo")
+                        .property("diffuse")
                         .and_then(|p| p.values::<u64>().next())
                 })
                 .unwrap_or(0);
@@ -212,14 +212,8 @@ fn process_mesh_nodes(model_node: &CastNode, model: &mut Model) {
             let mut face_buffer = FaceBuffer::new();
             if let Some(f_property) = child_node.property("f") {
                 let indices: Vec<u32> = f_property.values::<u32>().collect();
-                for i in (0..indices.len()).step_by(3) {
-                    // Defensive: check for enough indices
-                    if i + 2 < indices.len() {
-                        let a = indices[i + 2];
-                        let b = indices[i + 1];
-                        let c = indices[i];
-                        face_buffer.push(Face::new(a, b, c));
-                    }
+                for chunk in indices.chunks_exact(3) {
+                    face_buffer.push(Face::new(chunk[2], chunk[1], chunk[0]));
                 }
             }
 
