@@ -31,7 +31,7 @@ jobs:
       # Prepare binary for upload per OS
       - name: Prepare binary
         run: |
-          BINARY_NAME="cast_model_viewer"
+          BINARY_NAME="cast_viewer"
           if [ "${{ runner.os }}" = "Windows" ]; then
             mv target/release/${BINARY_NAME}.exe ${BINARY_NAME}-windows.exe
             echo "ASSET=${BINARY_NAME}-windows.exe" >> $GITHUB_ENV
