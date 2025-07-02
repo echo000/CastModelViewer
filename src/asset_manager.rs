@@ -22,12 +22,12 @@ pub struct Asset {
 
 impl Asset {
     pub fn search(&self) -> PorterSearchAsset {
-        PorterSearchAsset::new(self.name())
+        PorterSearchAsset::new(self.name().to_string())
     }
 
     /// Returns the name of the asset
-    pub fn name(&self) -> String {
-        self.name.clone()
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     /// Returns the PorterAssetStatus of an Asset
@@ -35,8 +35,8 @@ impl Asset {
         &self.status
     }
 
-    fn info(&self) -> String {
-        "N/A".to_string()
+    fn info(&self) -> &str {
+        "N/A"
     }
 
     /// Returns the color of the asset type
@@ -88,10 +88,10 @@ impl PorterAssetManager for AssetManager {
 
         match loaded_assets.get(asset_index) {
             Some(asset) => vec![
-                (asset.name(), None),
+                (asset.name().to_string(), None),
                 (asset.type_name().to_string(), Some(asset.color())),
                 (asset.status().to_string(), Some(asset.status().color())),
-                (asset.info(), None),
+                (asset.info().to_string(), None),
             ],
             None => vec![],
         }
