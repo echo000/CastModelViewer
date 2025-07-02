@@ -13,6 +13,8 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
+        with:
+            toolchain: 1.85.0
 
       # Install Rust (uses the version in rust-toolchain file if present)
       - uses: dtolnay/rust-toolchain@stable
