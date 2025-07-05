@@ -26,11 +26,7 @@ pub fn load_model_images(model: &Model, file_name: &Path) -> Vec<Option<Image>> 
                     Some("dds") => ImageFileType::Dds,
                     Some("tiff") => ImageFileType::Tiff,
                     Some("tga") => ImageFileType::Tga,
-                    Some(ext) => {
-                        eprintln!("Unsupported file extension: {ext}");
-                        ImageFileType::Dds
-                    }
-                    None => {
+                    _ => {
                         eprintln!("File has no extension");
                         ImageFileType::Dds
                     }
