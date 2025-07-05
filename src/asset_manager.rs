@@ -176,7 +176,9 @@ impl PorterAssetManager for AssetManager {
     }
 
     /// Exports a game's assets in async.
-    fn on_export(&self, _settings: PorterSettings, _assets: Vec<usize>, _ui: PorterUI) {}
+    fn on_export(&self, _settings: PorterSettings, _assets: Vec<usize>, ui: PorterUI) {
+        ui.sync(false, 100);
+    }
 
     /// Loads a game's asset for previewing.
     fn on_preview(&self, _settings: PorterSettings, asset: usize, request_id: u64, ui: PorterUI) {
