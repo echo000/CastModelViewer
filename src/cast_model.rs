@@ -14,10 +14,7 @@ pub fn load_model_images(model: &Model, file_name: &Path) -> Vec<Option<Image>> 
         .par_iter()
         .map(|mats| {
             // Find the first texture with matching usage
-            let texture = mats.textures.iter().find(|images| {
-                images.texture_usage == MaterialTextureRefUsage::Diffuse
-                    || images.texture_usage == MaterialTextureRefUsage::Albedo
-            });
+            let texture = mats.base_color_texture();
             if let Some(images) = texture {
                 let directory = file_name.parent().unwrap_or(Path::new("."));
                 let f = directory.join(&images.file_name);
