@@ -5,13 +5,14 @@ use porter_model::{
     Skeleton, VertexBuffer,
 };
 use porter_texture::{Image, ImageFileType};
-use rayon::prelude::*;
+use porter_threads::{IntoParallelIterator, ParallelIterator};
 use std::path::Path;
 
 pub fn load_model_images(model: &Model, file_name: &Path) -> Vec<Option<Image>> {
     model
         .materials
-        .par_iter()
+        .as_slice()
+        .into_par_iter()
         .map(|mats| {
             // Find the first texture with matching usage
             let texture = mats.base_color_texture();
@@ -65,6 +66,36 @@ fn process_skeleton_node(skeleton_node: &CastNode) -> Skeleton {
 }
 
 fn process_bone_node(bone_node: &CastNode) -> Bone {
+    let local_position = bone_node
+        .property("lp")
+        .and_then(|p| p.values::<Vector3>().next())
+        .unwrap_or_default();
+    let local_rotation = bone_node
+        .property("lr")
+        .and_then(|p| p.values::<Quaternion>().next())
+        .unwrap_or_default();
+    let local_scale = bone_node
+        .property("s")
+        .and_then(|p| p.values::<Vector3>().next())
+        .unwrap_or_default();
+    let world_position = bone_node
+        .property("wp")
+        .and_then(|p| p.values::<Vector3>().next())
+        .unwrap_or_default();
+    let world_rotation = bone_node
+        .property("wr")
+        .and_then(|p| p.values::<Quaternion>().next())
+        .unwrap_or_default();
+    let world_scale = bone_node
+        .property("s")
+        .and_then(|p| p.values::<Vector3>().next())
+        .unwrap_or_default();
+    let segment_scale_compensate = bone_node
+        .property("ssc")
+        .and_then(|p| p.values::<u8>().next())
+        .map(|v| v != 0)
+        .unwrap_or(false);
+
     Bone {
         name: bone_node
             .property("n")
@@ -74,24 +105,13 @@ fn process_bone_node(bone_node: &CastNode) -> Bone {
             .and_then(|p| p.values::<u32>().next())
             .map(|v| v as i32)
             .unwrap_or(-1),
-        local_position: bone_node
-            .property("lp")
-            .and_then(|p| p.values::<Vector3>().next()),
-        local_rotation: bone_node
-            .property("lr")
-            .and_then(|p| p.values::<Quaternion>().next()),
-        local_scale: bone_node
-            .property("s")
-            .and_then(|p| p.values::<Vector3>().next()),
-        world_position: bone_node
-            .property("wp")
-            .and_then(|p| p.values::<Vector3>().next()),
-        world_rotation: bone_node
-            .property("wr")
-            .and_then(|p| p.values::<Quaternion>().next()),
-        world_scale: bone_node
-            .property("s")
-            .and_then(|p| p.values::<Vector3>().next()),
+        local_position,
+        local_rotation,
+        local_scale,
+        world_position,
+        world_rotation,
+        world_scale,
+        segment_scale_compensate,
     }
 }
 
@@ -143,7 +163,8 @@ fn process_mesh_nodes(model_node: &CastNode, model: &mut Model) {
     let mesh_nodes: Vec<&CastNode> = model_node.children_of_type(CastId::Mesh).collect();
 
     let meshes: Vec<Mesh> = mesh_nodes
-        .par_iter()
+        .as_slice()
+        .into_par_iter()
         .map(|child_node| {
             let uv_layers = child_node
                 .property("ul")

@@ -1,0 +1,49 @@
+[package]
+name = "porter-app"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+porter-utils = { git = "https://github.com/dtzxporter/porter-lib"}
+porter-math = { git = "https://github.com/dtzxporter/porter-lib" }
+porter-texture = { git = "https://github.com/dtzxporter/porter-lib" }
+porter-animation = { git = "https://github.com/dtzxporter/porter-lib" }
+porter-preview = { git = "https://github.com/dtzxporter/porter-lib" }
+porter-audio = { git = "https://github.com/dtzxporter/porter-lib" }
+porter-model = { git = "https://github.com/dtzxporter/porter-lib" }
+porter-threads = { git = "https://github.com/dtzxporter/porter-lib" }
+
+bincode.workspace = true
+bitflags.workspace = true
+directories.workspace = true
+iced.workspace = true
+lyon_algorithms.workspace = true
+rfd.workspace = true
+unicode-segmentation.workspace = true
+
+[target.'cfg(target_os = "windows")'.dependencies]
+raw-window-handle.workspace = true
+windows-sys.workspace = true
+
+[features]
+# Enables animation assets.
+animations = []
+# Enables material assets.
+materials = []
+# Enables sound assets.
+sounds = []
+# Enables raw file assets.
+raw-files = []
+
+# Enables loading of multiple files at once.
+multi-file = []
+# Enables sRGB gamma correction for model material previews.
+srgb-preview = []
+# Enables preview to start opened with the app.
+start-preview = []
+# Enables sound conversion.
+sounds-convertible = []
+# Enables normal map conversion.
+normal-maps-convertible = []
+# Enables forceable raw files.
+raw-files-forcible = []

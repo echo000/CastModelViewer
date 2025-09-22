@@ -1,0 +1,24 @@
+[package]
+name = "cast_viewer"
+version = "0.0.2"
+edition = "2024"
+
+[[bin]]
+name = "cast_viewer"
+path = "src/main.rs"
+
+[build-dependencies]
+porter-build = { git = "https://github.com/dtzxporter/porter-lib" }
+
+[dependencies]
+porter-app = { path = "../porter-app", features = [
+    "multi-file",
+    "srgb-preview",
+    "start-preview",
+] }
+porter-model = { git = "https://github.com/dtzxporter/porter-lib" }
+porter-math = { git = "https://github.com/dtzxporter/porter-lib" }
+porter-utils = { git = "https://github.com/dtzxporter/porter-lib" }
+porter-texture = { git = "https://github.com/dtzxporter/porter-lib" }
+porter-threads = { git = "https://github.com/dtzxporter/porter-lib" }
+porter-cast = { git = "https://github.com/dtzxporter/porter-lib" }

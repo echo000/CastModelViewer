@@ -1,14 +1,6 @@
-[package]
-name = "cast_viewer"
-version = "0.0.1"
-edition = "2021"
-
-[[bin]]
-name = "cast_viewer"
-path = "src/main.rs"
-
-[build-dependencies]
-embed-manifest = "1.4"
+[workspace]
+members = ["crates/cast_viewer"]
+resolver = "2"
 
 [profile.dev]
 opt-level = 2
@@ -18,15 +10,35 @@ lto = "fat"
 codegen-units = 1
 
 [patch.crates-io]
-iced = { git = "https://github.com/dtzxporter/iced", rev = "d4fc744243da36d7fc1c62d30b38306f2c8caa2f" }
+iced = { git = "https://github.com/dtzxporter/iced", rev = "9329aa3fd34f70cda4eef678cc024eb845918f85" }
 
-[dependencies]
-porter-model = { git = "https://github.com/echo000/porter-lib/", branch = "cast_viewer" }
-porter-math = { git = "https://github.com/echo000/porter-lib/", branch = "cast_viewer" }
-porter-ui = { git = "https://github.com/echo000/porter-lib/", branch = "cast_viewer" }
-porter-utils = { git = "https://github.com/echo000/porter-lib/", branch = "cast_viewer" }
-porter-texture = { git = "https://github.com/echo000/porter-lib/", branch = "cast_viewer" }
-porter-threads = { git = "https://github.com/echo000/porter-lib/", branch = "cast_viewer" }
-porter-cast = { git = "https://github.com/echo000/porter-lib/", branch = "cast_viewer" }
-rayon = "1.10.0"
-byteorder = "1.5.0"
+# These are for porter-app for now.
+[workspace.dependencies]
+bincode = { version = "2.0", default-features = false, features = ["std", "derive"] }
+bitflags = "2.9"
+directories = "6.0"
+iced = { version = "0.14.0-dev", default-features = false, features = [
+    "image-without-codecs",
+    "canvas",
+    "advanced",
+    "wgpu-without-backends",
+] }
+lyon_algorithms = { version = "1.0", default-features = false }
+rfd = { version = "0.15", default-features = false, features = ["gtk3", "common-controls-v6"] }
+unicode-segmentation = "1.11"
+raw-window-handle = { version = "0.6", default-features = false }
+windows-sys = { version = "0.60", default-features = false, features = [
+    "Win32_Foundation",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_Graphics_Gdi",
+    "Win32_System_Threading",
+    "Win32_System_Console",
+    "Win32_System_ProcessStatus",
+    "Win32_System_WindowsProgramming",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_System_LibraryLoader",
+    "Win32_Networking_WinHttp",
+    "Wdk_System_SystemInformation",
+] }

@@ -1,10 +1,9 @@
-use porter_cast::{CastFile, CastId};
-use porter_threads::ParallelIterator;
-use porter_ui::{
-    Color, PorterAssetManager, PorterAssetStatus, PorterColorPalette, PorterPreviewAsset,
-    PorterSearch, PorterSearchAsset, PorterSettings, PorterUI,
+use porter_app::{
+    AssetPreview, AssetStatus, Color, Controller, SearchAsset, SearchTerm, Settings,
+    palette::ASSET_TYPE_MODEL,
 };
-use rayon::prelude::*;
+use porter_cast::{CastFile, CastId};
+use porter_threads::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 use std::fs::File;
 use std::io::{Cursor, Read};
 use std::path::PathBuf;
@@ -17,36 +16,36 @@ pub struct Asset {
     pub name: String,
     pub file_name: PathBuf,
     //pub cast: cast_model::CastNode,
-    pub status: PorterAssetStatus,
+    pub status: AssetStatus,
 }
 
 impl Asset {
-    pub fn search(&self) -> PorterSearchAsset {
-        PorterSearchAsset::new(self.name().to_string())
+    pub fn search(&self) -> SearchAsset {
+        SearchAsset::new(self.name().to_string())
     }
 
     /// Returns the name of the asset
-    pub fn name(&self) -> &str {
-        &self.name
+    pub fn name(&self) -> String {
+        self.name.clone()
     }
 
     /// Returns the PorterAssetStatus of an Asset
-    fn status(&self) -> &PorterAssetStatus {
+    fn status(&self) -> &AssetStatus {
         &self.status
     }
 
-    fn info(&self) -> &str {
-        "N/A"
+    fn info(&self) -> String {
+        "N/A".to_string()
     }
 
     /// Returns the color of the asset type
     fn color(&self) -> Color {
-        PorterColorPalette::asset_type_model()
+        ASSET_TYPE_MODEL
     }
 
     /// Returns the type name kf the asset
-    fn type_name(&self) -> &'static str {
-        "Model"
+    fn type_name(&self) -> String {
+        "Model".to_string()
     }
 }
 
@@ -68,15 +67,19 @@ impl AssetManager {
     }
 }
 
-impl PorterAssetManager for AssetManager {
-    /// Returns the asset info in the form of the columns to render.
-    /// Returns the asset info in the form of the columns to render.
-    fn asset_info(&self, index: usize) -> Vec<(String, Option<Color>)> {
-        let search = self.search_assets.read().unwrap();
-        let loaded_assets = self.loaded_assets.read().unwrap();
+impl porter_app::AssetManager for AssetManager {
+    /// Whether or not the asset manager supports loading game files on disk.
+    fn supports_files(&self) -> bool {
+        true
+    }
 
-        //Change this
-        let asset_index = if let Some(search) = search.as_ref() {
+    /// Gets information about the specific asset, in the form of column data.
+    fn assets_info(&self, index: usize) -> Vec<(String, Option<Color>)> {
+        let search_lock = self.search_assets.read().unwrap();
+        let loaded_assets_lock = self.loaded_assets.read().unwrap();
+
+        // Change this when new porter_lib out
+        let asset_index = if let Some(search) = search_lock.as_ref() {
             search.get(index).copied()
         } else {
             Some(index)
@@ -86,32 +89,34 @@ impl PorterAssetManager for AssetManager {
             return vec![];
         };
 
-        match loaded_assets.get(asset_index) {
+        match loaded_assets_lock.get(asset_index) {
             Some(asset) => vec![
-                (asset.name().to_string(), None),
-                (asset.type_name().to_string(), Some(asset.color())),
+                (asset.name(), None),
+                (asset.type_name(), Some(asset.color())),
                 (asset.status().to_string(), Some(asset.status().color())),
-                (asset.info().to_string(), None),
+                (asset.info(), None),
             ],
             None => vec![],
         }
     }
 
-    /// Returns the number of assets renderable, as in search for, or loaded.
-    fn len(&self) -> usize {
-        if let Some(indexes) = &*self.search_assets.read().unwrap() {
+    /// The number of visible assets, whether they are search results, or just loaded.
+    fn assets_visible(&self) -> usize {
+        let search_lock = self.search_assets.read().unwrap();
+
+        if let Some(indexes) = search_lock.as_ref() {
             indexes.len()
         } else {
             self.loaded_assets.read().unwrap().len()
         }
     }
 
-    /// Returns the total number of assets loaded.
-    fn loaded_len(&self) -> usize {
+    /// The total number of assets loaded.
+    fn assets_total(&self) -> usize {
         self.loaded_assets.read().unwrap().len()
     }
 
-    fn search_assets(&self, search: Option<PorterSearch>) {
+    fn search(&self, search: Option<SearchTerm>) {
         let Some(search) = search else {
             *self.search_assets.write().unwrap() = None;
             return;
@@ -120,7 +125,8 @@ impl PorterAssetManager for AssetManager {
         let loaded_assets = self.loaded_assets.read().unwrap();
 
         let results = loaded_assets
-            .par_iter()
+            .as_slice()
+            .into_par_iter()
             .enumerate()
             .filter_map(|(index, asset)| {
                 if search.matches(asset.search()) {
@@ -134,18 +140,8 @@ impl PorterAssetManager for AssetManager {
         *self.search_assets.write().unwrap() = Some(results);
     }
 
-    /// Whether or not load files is supported.
-    fn supports_load_files(&self) -> bool {
-        true
-    }
-
-    /// Whether or not load game is supported.
-    fn supports_load_game(&self) -> bool {
-        false
-    }
-
     /// Loads one or more given file in async.
-    fn on_load_files(&self, _settings: PorterSettings, files: Vec<PathBuf>) -> Result<(), String> {
+    fn load_files(&self, _settings: Settings, files: Vec<PathBuf>) -> Result<(), String> {
         for file_name in &files {
             if let Some(ext) = file_name.extension().and_then(|ext| ext.to_str()) {
                 if ext == "cast" {
@@ -156,7 +152,7 @@ impl PorterAssetManager for AssetManager {
                             .unwrap_or_default()
                             .to_string(),
                         file_name: file_name.to_path_buf(),
-                        status: PorterAssetStatus::loaded(),
+                        status: AssetStatus::LOADED,
                     };
 
                     // Assign to shared state
@@ -176,12 +172,19 @@ impl PorterAssetManager for AssetManager {
     }
 
     /// Exports a game's assets in async.
-    fn on_export(&self, _settings: PorterSettings, _assets: Vec<usize>, ui: PorterUI) {
-        ui.sync(false, 100);
+    fn export(&self, _settings: Settings, _assets: Vec<usize>, controller: Controller) {
+        controller.progress_update(true, 100);
     }
 
     /// Loads a game's asset for previewing.
-    fn on_preview(&self, _settings: PorterSettings, asset: usize, request_id: u64, ui: PorterUI) {
+    fn preview(
+        &self,
+        _settings: Settings,
+        asset: usize,
+        _raw: bool,
+        request_id: u64,
+        controller: Controller,
+    ) {
         let assets_guard = self.loaded_assets.read().unwrap();
 
         let (asset_name, asset_ref) = {
@@ -202,30 +205,30 @@ impl PorterAssetManager for AssetManager {
             (name, selected_asset)
         };
 
-        let preview = File::open(&asset_ref.file_name).ok().and_then(|mut f| {
+        let preview_asset = File::open(&asset_ref.file_name).ok().and_then(|mut f| {
             let mut buffer = Vec::new();
             if f.read_to_end(&mut buffer).is_err() {
                 return None;
             }
             let mut cursor = Cursor::new(&buffer);
             let file = CastFile::read(&mut cursor).ok()?;
-            let model_node = file
-                .roots()
-                .next()
-                .and_then(|root| root.children_of_type(CastId::Model).next())?;
+            let root = file.roots().first()?;
+            let model_node = root.children_of_type(CastId::Model).next()?;
             // You must NOT return references into `file` or `model_node` here.
             let model = cast_model::process_model_node(model_node)?;
             let images = cast_model::load_model_images(&model, &asset_ref.file_name);
-            Some(PorterPreviewAsset::Model(asset_name, model, images))
+            Some(AssetPreview::Model(asset_name, model, images))
         });
 
-        ui.preview(preview, request_id);
+        if let Some(preview) = preview_asset {
+            controller.preview_update(request_id, preview);
+        }
     }
 
     /// Cancels an active export.
-    fn cancel_export(&self) {}
+    fn export_cancel(&self) {}
 
-    fn on_load_game(&self, _settings: PorterSettings) -> Result<(), String> {
+    fn load_game(&self, _settings: Settings) -> Result<(), String> {
         todo!()
     }
 }
