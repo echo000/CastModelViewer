@@ -101,7 +101,7 @@ impl SplashWindow {
                     text(format!("Version {}", state.version)).into(),
                     row([
                         text("Developed by:").into(),
-                        text("DTZxPorter").color(palette::TEXT_COLOR_PORTER).into(),
+                        text("echo000").color(palette::TEXT_COLOR_PORTER).into(),
                     ])
                     .spacing(4.0)
                     .into(),
