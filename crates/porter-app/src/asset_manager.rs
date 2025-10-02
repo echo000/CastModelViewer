@@ -20,6 +20,11 @@ pub trait AssetManager: Send + Sync + 'static {
         false
     }
 
+    /// Whether or not the asset manager supports loading a folder.
+    fn supports_directories(&self) -> bool {
+        false
+    }
+
     /// Gets information about the specific asset, in the form of column data.
     fn assets_info(&self, index: usize) -> Vec<(String, Option<Color>)>;
 
@@ -47,6 +52,9 @@ pub trait AssetManager: Send + Sync + 'static {
 
     /// Loads one or more given files.
     fn load_files(&self, settings: Settings, files: Vec<PathBuf>) -> Result<(), String>;
+
+    /// Loads a directory.
+    fn load_directory(&self, settings: Settings, files: PathBuf) -> Result<(), String>;
 
     /// Loads a running game instance.
     fn load_game(&self, settings: Settings) -> Result<(), String>;

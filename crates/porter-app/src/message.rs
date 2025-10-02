@@ -38,6 +38,7 @@ pub enum Message {
     ExportAll,
     ExportCancel,
     LoadFiles(Vec<PathBuf>),
+    LoadDirectory(PathBuf),
     LoadFilesDropped,
     LoadGame,
     Sort(Option<usize>),

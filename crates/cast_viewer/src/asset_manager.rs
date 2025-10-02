@@ -8,6 +8,7 @@ use std::fs::File;
 use std::io::{Cursor, Read};
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
+use walkdir::WalkDir;
 
 use crate::cast_model;
 
@@ -65,11 +66,32 @@ impl AssetManager {
             loaded_assets: Arc::new(RwLock::new(Vec::new())),
         }
     }
+
+    // TODO: Think of a better way of doing this, currently reads the entire file when initially loading
+    //       which is not ideal for large files.
+    pub fn ensure_has_model<R: Read>(mut reader: R) -> Result<(), String> {
+        let cast = CastFile::read(&mut reader).map_err(|e| format!("Error loading file: {e}"))?;
+
+        let found = cast
+            .roots()
+            .iter()
+            .any(|root| root.children_of_type(CastId::Model).next().is_some());
+
+        if found {
+            Ok(())
+        } else {
+            Err("No model found".to_string())
+        }
+    }
 }
 
 impl porter_app::AssetManager for AssetManager {
     /// Whether or not the asset manager supports loading game files on disk.
     fn supports_files(&self) -> bool {
+        true
+    }
+
+    fn supports_directories(&self) -> bool {
         true
     }
 
@@ -169,6 +191,59 @@ impl porter_app::AssetManager for AssetManager {
             }
         }
         Ok(())
+    }
+
+    /// Recursively loads all files found under the provided directory.
+    fn load_directory(&self, _settings: Settings, directory: PathBuf) -> Result<(), String> {
+        if !directory.is_dir() {
+            return Err("Provided path is not a directory".to_string());
+        }
+
+        let mut discovered = Vec::new();
+
+        for entry in WalkDir::new(&directory).into_iter().filter_map(|e| e.ok()) {
+            let path = entry.path();
+            if !path.is_file() {
+                continue;
+            }
+
+            if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                if ext.eq_ignore_ascii_case("cast") {
+                    let reader = File::open(path).map_err(|e| format!("Could not open: {e}"))?;
+
+                    // Ensure the file has a model node
+                    if Self::ensure_has_model(reader).is_err() {
+                        continue;
+                    }
+
+                    let name = path
+                        .file_stem()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or_default()
+                        .to_string();
+
+                    discovered.push(Asset {
+                        name,
+                        file_name: path.to_path_buf(),
+                        status: AssetStatus::LOADED,
+                    });
+                }
+            }
+        }
+
+        if discovered.is_empty() {
+            return Ok(());
+        }
+
+        let mut loaded = self.loaded_assets.write();
+
+        match loaded.as_mut() {
+            Ok(loaded) => {
+                loaded.extend(discovered);
+                Ok(())
+            }
+            Err(_) => Err("Failed to acquire write lock on loaded assets".to_string()),
+        }
     }
 
     /// Exports a game's assets in async.

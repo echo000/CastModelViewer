@@ -20,6 +20,7 @@ pub struct Controls;
 pub enum ControlsMessage {
     LoadGame,
     LoadFile,
+    LoadFolder,
     ExportSelected,
     ExportAll,
     ExportCancel,
@@ -38,6 +39,7 @@ impl Controls {
         match message {
             LoadGame => Task::done(Message::LoadGame),
             LoadFile => Task::done(Message::from(MainMessage::LoadFile)),
+            LoadFolder => Task::done(Message::from(MainMessage::LoadFolder)),
             ExportSelected => Task::done(Message::ExportSelected),
             ExportAll => Task::done(Message::ExportAll),
             ExportCancel => Task::done(Message::ExportCancel),
@@ -70,6 +72,18 @@ impl Controls {
                         None
                     } else {
                         Some(Message::from(ControlsMessage::LoadFile))
+                    }),
+            );
+        }
+
+        if state.asset_manager.supports_directories() {
+            row = row.push(
+                widgets::button("Load Folder")
+                    .padding([6.0, 10.0])
+                    .on_press_maybe(if state.is_busy() {
+                        None
+                    } else {
+                        Some(Message::from(ControlsMessage::LoadFolder))
                     }),
             );
         }

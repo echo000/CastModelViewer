@@ -62,6 +62,7 @@ pub enum MainMessage {
     Controls(ControlsMessage),
     Settings(SettingsMessage),
     LoadFile,
+    LoadFolder,
     PickExportFolder,
     Warning(String),
 }
@@ -109,6 +110,7 @@ impl MainWindow {
             Controls(message) => self.controls.update(state, message),
             Settings(message) => self.settings.update(state, message),
             LoadFile => self.on_load_file(state),
+            LoadFolder => self.on_load_directory(state),
             PickExportFolder => self.on_pick_export_folder(state),
             Warning(message) => self.on_warning(state, message),
         }
@@ -270,6 +272,41 @@ impl MainWindow {
                     }
                 } else if let Some(file) = file_dialog.pick_file() {
                     controller.load_files(vec![file]);
+                }
+            };
+
+            #[cfg(target_os = "windows")]
+            std::thread::spawn(dialog);
+
+            #[cfg(not(target_os = "windows"))]
+            dialog();
+
+            Message::Noop
+        })
+    }
+
+    /// Attempts to select files to load.
+    fn on_load_directory(&mut self, state: &mut AppState) -> Task<Message> {
+        if state.is_busy() {
+            return Task::none();
+        }
+
+        let mut file_dialog = FileDialog::new();
+
+        for (name, extensions) in &state.file_filters {
+            file_dialog = file_dialog.add_filter(*name, extensions);
+        }
+
+        let controller = state.controller.clone();
+
+        let title = format!("{} | Select directory to load", state.name.to_titlecase());
+
+        window::run_with_handle(self.id, move |handle| {
+            let file_dialog = file_dialog.set_parent(&handle).set_title(title);
+
+            let dialog = move || {
+                if let Some(file) = file_dialog.pick_folder() {
+                    controller.load_directory(file);
                 }
             };
 

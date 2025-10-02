@@ -10,6 +10,7 @@ path = "src/main.rs"
 [build-dependencies]
 porter-build = { git = "https://github.com/dtzxporter/porter-lib" }
 
+
 [dependencies]
 porter-app = { path = "../porter-app", features = [
     "multi-file",
@@ -22,3 +23,4 @@ porter-utils = { git = "https://github.com/dtzxporter/porter-lib" }
 porter-texture = { git = "https://github.com/dtzxporter/porter-lib" }
 porter-threads = { git = "https://github.com/dtzxporter/porter-lib" }
 porter-cast = { git = "https://github.com/dtzxporter/porter-lib" }
+walkdir = "2"

@@ -102,6 +102,7 @@ impl App {
             ExportAll => self.on_export_all(),
             ExportCancel => self.on_export_cancel(),
             LoadFiles(files) => self.on_load_files(files),
+            LoadDirectory(files) => self.on_load_directory(files),
             LoadFilesDropped => self.on_load_files_dropped(),
             LoadGame => self.on_load_game(),
             Sort(index) => self.on_sort(index),
@@ -480,6 +481,28 @@ impl App {
 
         porter_threads::spawn(move || {
             controller.load_update(manager.load_files(settings, files));
+        });
+
+        Task::none()
+    }
+
+    /// Occurs when the user requests to load some files.
+    fn on_load_directory(&mut self, files: PathBuf) -> Task<Message> {
+        if self.state.is_busy() {
+            return Task::none();
+        }
+
+        let manager = self.state.asset_manager.clone();
+        let controller = self.state.controller.clone();
+        let settings = self.state.settings.clone();
+
+        self.state.loading = true;
+        self.state.progress = 0;
+        self.state.last_load = None;
+        self.state.assets_selected.clear();
+
+        porter_threads::spawn(move || {
+            controller.load_update(manager.load_directory(settings, files));
         });
 
         Task::none()

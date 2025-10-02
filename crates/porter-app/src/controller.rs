@@ -32,6 +32,13 @@ impl Controller {
         debug_assert!(result.is_ok());
     }
 
+    /// Requests the given files be loaded by the app.
+    pub fn load_directory(&self, files: PathBuf) {
+        let result = self.channel.unbounded_send(Message::LoadDirectory(files));
+
+        debug_assert!(result.is_ok());
+    }
+
     /// Requests that dropped files be loaded.
     pub fn load_files_dropped(&self) {
         let result = self.channel.unbounded_send(Message::LoadFilesDropped);
